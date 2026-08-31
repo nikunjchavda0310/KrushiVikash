@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Sales Analytics | KrushiVikash</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<div th:fragment="salesContent" class="container-fluid animated fadeIn">
+    <style>
+        .card { border-radius: 12px; border: none; transition: 0.3s; }
+        .card:hover { transform: translateY(-5px); }
+        .bg-gradient-success { background: linear-gradient(45deg, #28a745, #5dd178); }
+        .bg-gradient-primary { background: linear-gradient(45deg, #007bff, #3391ff); }
+        .bg-gradient-warning { background: linear-gradient(45deg, #ffc107, #ffdb70); }
+        .rounded-circle-white { background: rgba(255, 255, 255, 0.2); width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; border-radius: 50%; }
+
+        /* Ensures the filter buttons look distinct from the sidebar active state */
+        .btn-group .btn-success { z-index: 0; }
+    </style>
+
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 border-bottom pb-3">
+        <div>
+            <h2 class="text-success fw-bold mb-0">Sales Analytics</h2>
+            <p class="text-muted small mb-0">Monitor your farm's performance</p>
+        </div>
+
+        <div class="d-flex gap-2 mt-2 mt-md-0">
+            <div class="btn-group shadow-sm" role="group">
+                <button type="button" th:onclick="|loadContent('/farmer/total-sell?filter=today', document.querySelector('a[onclick*=\'total-sell\']'))|"
+                        th:classappend="${currentFilter == 'today'} ? 'btn-success' : 'btn-outline-success'" class="btn btn-sm">Today</button>
+
+                <button type="button" th:onclick="|loadContent('/farmer/total-sell?filter=month', document.querySelector('a[onclick*=\'total-sell\']'))|"
+                        th:classappend="${currentFilter == 'month'} ? 'btn-success' : 'btn-outline-success'" class="btn btn-sm">Month</button>
+
+                <button type="button" th:onclick="|loadContent('/farmer/total-sell?filter=all', document.querySelector('a[onclick*=\'total-sell\']'))|"
+                        th:classappend="${currentFilter == 'all'} ? 'btn-success' : 'btn-outline-success'" class="btn btn-sm">All Time</button>
+            </div>
+
+            <a th:href="@{/farmer/export-sales(filter=${currentFilter})}" class="btn btn-primary btn-sm shadow-sm">
+                <i class="fas fa-file-excel me-1"></i> Export Excel
+            </a>
+        </div>
+    </div>
+
+    <div class="row mb-4" th:if="${!categoryData.isEmpty()}">
+        <div class="col-md-4 mb-3">
+            <div class="card border-0 shadow-sm bg-gradient-success text-white">
+                <div class="card-body d-flex align-items-center">
+                    <div class="rounded-circle-white"><i class="fas fa-indian-rupee-sign"></i></div>
+                    <div class="ms-3">
+                        <h6 class="text-uppercase small mb-1 opacity-75">Total Revenue</h6>
+                        <h3 class="mb-0 fw-bold">₹[[${#numbers.formatDecimal(totalRevenue, 1, 2)}]]</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-3">
+            <div class="card border-0 shadow-sm bg-gradient-primary text-white">
+                <div class="card-body d-flex align-items-center">
+                    <div class="rounded-circle-white"><i class="fas fa-shopping-basket"></i></div>
+                    <div class="ms-3">
+                        <h6 class="text-uppercase small mb-1 opacity-75">Items Sold</h6>
+                        <h3 class="mb-0 fw-bold">[[${totalQty}]] Units</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-3">
+            <div class="card border-0 shadow-sm bg-gradient-warning text-dark">
+                <div class="card-body d-flex align-items-center">
+                    <div class="rounded-circle-white border border-dark"><i class="fas fa-chart-line"></i></div>
+                    <div class="ms-3">
+                        <h6 class="text-uppercase small mb-1 opacity-75">Avg Sale</h6>
+                        <h3 class="mb-0 fw-bold">₹[[${totalQty > 0 ? #numbers.formatDecimal(totalRevenue / totalQty, 1, 2) : 0}]]</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div th:if="${categoryData.isEmpty()}" class="text-center py-5 card shadow-sm border-0">
+        <div class="card-body">
+            <i class="fas fa-folder-open fa-3x text-muted mb-3"></i>
+            <h4 class="text-muted">No sales data found</h4>
+            <p class="text-secondary small">Try selecting a different time filter.</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div th:each="entry : ${categoryData}" class="col-md-6 col-lg-4 mb-4">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white border-0 py-3">
+                    <i class="fas fa-tag text-success me-2"></i>
+                    <span class="fw-bold text-uppercase text-secondary small" th:text="${entry.key}">Category</span>
+                </div>
+                <div class="card-body">
+                    <div style="position: relative; height:220px;">
+                        <canvas th:id="'chart-' + ${#strings.replace(entry.key, ' ', '')}"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script th:inline="javascript">
+        (function initCharts() {
+            const salesData = [[${categoryData}]];
+            if (!salesData || Object.keys(salesData).length === 0) return;
+
+            setTimeout(() => {
+                Object.keys(salesData).forEach(category => {
+                    const canvasId = 'chart-' + category.replace(/\s+/g, '');
+                    const canvasElement = document.getElementById(canvasId);
+
+                    if (canvasElement) {
+                        const existingChart = Chart.getChart(canvasElement);
+                        if (existingChart) { existingChart.destroy(); }
+
+                        const ctx = canvasElement.getContext('2d');
+                        new Chart(ctx, {
+                            type: 'doughnut',
+                            data: {
+                                labels: Object.keys(salesData[category]),
+                                datasets: [{
+                                    data: Object.values(salesData[category]),
+                                    backgroundColor: ['#28a745', '#4e73df', '#f6c23e', '#e74a3b', '#36b9cc', '#858796'],
+                                    borderWidth: 2,
+                                    borderColor: '#ffffff'
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: {
+                                    legend: {
+                                        position: 'bottom',
+                                        labels: { boxWidth: 10, font: { size: 11 } }
+                                    }
+                                }
+                            }
+                        });
+                    }
+                });
+            }, 150);
+        })();
+    </script>
+</div>
+</body>
+</html>

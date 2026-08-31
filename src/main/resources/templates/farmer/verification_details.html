@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<div th:fragment="status-table">
+  <style>
+    .status-badge { padding: 6px 16px; border-radius: 50px; font-weight: 800; font-size: 0.9rem; }
+    .status-pending { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+    .status-approved { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    .status-rejected { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+
+    .data-table th {
+        background-color: #f8f9fa;
+        width: 35%;
+        color: #495057;
+        font-weight: 700;
+        border-right: 1px solid #dee2e6;
+    }
+    .data-table td { padding-left: 1.5rem !important; }
+  </style>
+
+  <div class="container mb-5" id="verify-wrapper" th:if="${verification != null}">
+
+    <div th:if="${verification.status == 'REJECTED'}" class="alert alert-danger shadow-sm mb-4 border-start border-5 border-danger fadeIn animated">
+      <div class="d-flex align-items-center">
+        <i class="fas fa-exclamation-circle fa-2x me-3"></i>
+        <div>
+          <h5 class="alert-heading fw-bold mb-1">Application Rejected</h5>
+          <p class="mb-0"><strong>Message from Admin:</strong> <span th:text="${verification.adminRemark != null ? verification.adminRemark : 'Please check your documents and try again.'}"></span></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card shadow-sm border-0" style="border-radius: 15px; overflow: hidden;">
+      <div class="card-header bg-white py-4 d-flex justify-content-between align-items-center border-bottom">
+        <div>
+          <h4 class="mb-1 fw-bold text-success">
+            <i class="fas fa-file-invoice me-2"></i> Land Verification Status
+          </h4>
+          <p class="text-muted small mb-0">Review your submitted details below</p>
+        </div>
+
+        <div th:switch="${verification.status}">
+          <span th:case="'PENDING'" class="status-badge status-pending">
+            <i class="fas fa-hourglass-half me-2"></i> PENDING
+          </span>
+          <span th:case="'APPROVED'" class="status-badge status-approved">
+            <i class="fas fa-check-circle me-2"></i> APPROVED
+          </span>
+          <span th:case="'REJECTED'" class="status-badge status-rejected">
+            <i class="fas fa-times-circle me-2"></i> REJECTED
+          </span>
+          <span th:case="*" class="status-badge bg-secondary text-white">
+            <i class="fas fa-question-circle me-2"></i> <span th:text="${verification.status}"></span>
+          </span>
+        </div>
+      </div>
+
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover mb-0 data-table">
+            <tbody>
+            <tr>
+              <th class="ps-4">Full Name</th>
+              <td th:text="${verification.fullName}">-</td>
+            </tr>
+            <tr>
+              <th class="ps-4">State</th>
+              <td th:text="${verification.state?.name}">-</td>
+            </tr>
+            <tr>
+              <th class="ps-4">District</th>
+              <td th:text="${verification.district?.name}">-</td>
+            </tr>
+            <tr>
+              <th class="ps-4">Taluka / Tehsil</th>
+              <td th:text="${verification.taluka?.name}">-</td>
+            </tr>
+            <tr>
+              <th class="ps-4">Village</th>
+              <td th:text="${verification.village}">-</td>
+            </tr>
+            <tr>
+              <th class="ps-4">Pin Code</th>
+              <td th:text="${verification.pincode}">-</td>
+            </tr>
+            <tr>
+              <th class="ps-4">7/12 Survey Number</th>
+              <td class="fw-bold text-primary" th:text="${verification.regNumber}">-</td>
+            </tr>
+            <tr>
+              <th class="ps-4">Farm Area (Vighas)</th>
+              <td><span th:text="${verification.farmArea}"></span> Vighas</td>
+            </tr>
+            <tr>
+              <th class="ps-4">Submitted On</th>
+              <td th:text="${#temporals.format(verification.submissionDate, 'dd MMMM yyyy, hh:mm a')}"></td>
+            </tr>
+            <tr>
+              <th class="ps-4">Uploaded Files</th>
+              <td>
+                <a th:if="${verification.satBaraFile}" th:href="@{'/uploads/documents/' + ${verification.satBaraFile}}" target="_blank" class="btn btn-sm btn-outline-success me-2">
+                  <i class="fas fa-file-pdf me-1"></i> 7/12 Extract
+                </a>
+                <a th:if="${verification.aadhaarFile}" th:href="@{'/uploads/documents/' + ${verification.aadhaarFile}}" target="_blank" class="btn btn-sm btn-outline-primary">
+                  <i class="fas fa-id-card me-1"></i> Aadhaar Copy
+                </a>
+              </td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card-footer bg-light py-4 text-center border-top-0">
+        <button class="btn btn-warning btn-lg px-5 fw-bold shadow-sm"
+                onclick="loadContent('/farmer/verify-fragment?edit=true')">
+          <i class="fas fa-edit me-2"></i> Edit & Re-submit
+        </button>
+        <button class="btn btn-outline-secondary btn-lg px-4 ms-2" onclick="location.reload()">
+          <i class="fas fa-sync-alt"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

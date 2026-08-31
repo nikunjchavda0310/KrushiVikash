@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>About Us | KrushiVikash</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --primary-green: #27ae60;
+      --soft-bg: #fdfdfd;
+    }
+
+    body {
+      font-family: 'Poppins', sans-serif;
+      background-color: var(--soft-bg);
+      color: #333;
+    }
+
+    h1, h2, h3 { font-family: 'Playfair Display', serif; }
+
+    /* About Sections */
+    .about-section { padding: 80px 0; }
+
+    .about-img {
+      border-radius: 30px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+      transition: 0.5s;
+    }
+    .about-img:hover { transform: scale(1.02); }
+
+    .content-title {
+      font-size: 2.5rem;
+      color: #2c3e50;
+      margin-bottom: 20px;
+    }
+
+    .btn-custom {
+      background: var(--primary-green);
+      color: white;
+      border-radius: 30px;
+      padding: 12px 30px;
+      font-weight: 600;
+      transition: 0.3s;
+      border: none;
+    }
+    .btn-custom:hover {
+      background: #219150;
+      color: white;
+      box-shadow: 0 10px 20px rgba(39, 174, 96, 0.2);
+    }
+
+    /* Review Cards */
+    .review-card {
+      background: white;
+      border: none;
+      border-radius: 20px;
+      padding: 30px;
+      text-align: center;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+      transition: 0.3s;
+      margin-bottom: 30px;
+    }
+    .review-card:hover { transform: translateY(-10px); }
+
+    .review-card img {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      margin-bottom: 15px;
+      border: 3px solid var(--primary-green);
+    }
+
+    .stars i { color: #f1c40f; font-size: 0.9rem; }
+
+    .stats-bar {
+      background: var(--primary-green);
+      color: white;
+      padding: 40px 0;
+      border-radius: 20px;
+      margin-top: -50px;
+      position: relative;
+      z-index: 10;
+    }
+  </style>
+</head>
+<body>
+
+<div th:replace="~{fragments/header :: header}"></div>
+
+<section class="about-section container">
+  <div class="row align-items-center mb-5">
+    <div class="col-lg-6 mb-4 mb-lg-0">
+      <img th:src="@{/images/about-img-1.png}" class="img-fluid about-img" alt="Why Choose Us">
+    </div>
+    <div class="col-lg-6 ps-lg-5">
+      <h2 class="content-title">Why Choose Us?</h2>
+      <p class="text-muted mb-4">We bridge the gap between local farmers and health-conscious families. Our platform ensures that you get the freshest harvest while farmers get the fair price they deserve. No middlemen, no chemicals, just pure nature.</p>
+      <a th:href="@{/contact}" class="btn btn-custom">Get in Touch</a>
+    </div>
+  </div>
+
+  <div class="row align-items-center flex-row-reverse">
+    <div class="col-lg-6 mb-4 mb-lg-0">
+      <img th:src="@{/images/about-img-2.png}" class="img-fluid about-img" alt="What we provide">
+    </div>
+    <div class="col-lg-6 pe-lg-5">
+      <h2 class="content-title">What We Provide?</h2>
+      <p class="text-muted mb-4">From farm-fresh vegetables and seasonal fruits to organic grains and pulses. Every product is verified for quality and origin. We provide transparency, fast delivery, and a healthier lifestyle for your family.</p>
+      <a th:href="@{/shop}" class="btn btn-custom">Explore Shop</a>
+    </div>
+  </div>
+</section>
+
+<div class="container mb-5">
+  <div class="stats-bar shadow">
+    <div class="row text-center">
+      <div class="col-md-4 mb-3 mb-md-0">
+        <h2 class="fw-bold">100%</h2>
+        <p class="mb-0 small text-uppercase fw-bold">Organic Certified</p>
+      </div>
+      <div class="col-md-4 mb-3 mb-md-0">
+        <h2 class="fw-bold">500+</h2>
+        <p class="mb-0 small text-uppercase fw-bold">Happy Clients</p>
+      </div>
+      <div class="col-md-4">
+        <h2 class="fw-bold">50+</h2>
+        <p class="mb-0 small text-uppercase fw-bold">Local Farmers</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<section class="bg-light py-5">
+  <div class="container">
+    <h1 class="text-center fw-bold mb-5">Client <span class="text-success">Reviews</span></h1>
+
+    <div class="row">
+      <div class="col-md-4">
+        <div class="review-card">
+          <img th:src="@{/images/pic-1.png}" alt="client">
+          <p class="text-muted italic">"The quality of the mangoes I received was amazing. You can really taste the difference compared to market-bought fruit!"</p>
+          <div class="stars mb-2">
+            <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star-half-alt"></i>
+          </div>
+          <h5 class="fw-bold">John Deo</h5>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div th:replace="~{fragments/footer :: footer}"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

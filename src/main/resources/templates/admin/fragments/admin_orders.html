@@ -1,0 +1,25 @@
+<table class="table" xmlns:th="http://www.w3.org/1999/xhtml">
+  <thead>
+  <tr>
+    <th>Order ID</th>
+    <th>Method</th>
+    <th>UTR / Transaction ID</th>
+    <th>Action</th>
+  </tr>
+  </thead>
+  <tbody>
+  <tr th:each="order : ${orders}">
+    <td th:text="${order.id}"></td>
+    <td>
+        <span class="badge" th:classappend="${order.paymentMethod == 'upi' ? 'bg-info' : 'bg-secondary'}"
+              th:text="${order.paymentMethod}"></span>
+    </td>
+    <td>
+      <strong th:text="${order.transactionId ?: 'N/A'}" class="text-primary"></strong>
+    </td>
+    <td>
+      <button class="btn btn-sm btn-success">Verify Payment</button>
+    </td>
+  </tr>
+  </tbody>
+</table>

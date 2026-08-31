@@ -1,0 +1,147 @@
+<div th:fragment="location-manage" xmlns:th="http://www.thymeleaf.org">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <div class="container-fluid" id="location-view-wrapper">
+    <div class="row mb-4">
+      <div class="col-12">
+        <h3 class="fw-bold text-dark"><i class="fas fa-globe-asia me-2 text-primary"></i>Geography Management</h3>
+        <p class="text-muted">Add and organize States, Districts, and Talukas for farmer registration.</p>
+      </div>
+    </div>
+
+    <div th:if="${success}" class="alert alert-success alert-dismissible fade show border-0 shadow-sm" role="alert">
+      <i class="fas fa-check-circle me-2"></i>
+      <span th:text="${success}"></span>
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <div th:if="${error}" class="alert alert-danger alert-dismissible fade show border-0 shadow-sm" role="alert">
+      <i class="fas fa-exclamation-triangle me-2"></i>
+      <span th:text="${error}"></span>
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <div class="row g-4">
+      <div class="col-md-4">
+        <div class="card shadow-sm border-0 h-100">
+          <div class="card-header bg-primary text-white py-3">
+            <h6 class="mb-0"><i class="fas fa-map me-2"></i>Add New State</h6>
+          </div>
+          <div class="card-body">
+            <form id="stateForm">
+              <div class="mb-3">
+                <label class="form-label small fw-bold">State Name</label>
+                <input type="text" name="name" class="form-control" placeholder="e.g. Gujarat" required
+                       oninput="this.value = this.value.replace(/[^a-zA-Z\s]/g, '')">
+              </div>
+              <button type="button" class="btn btn-primary w-100 shadow-sm loc-action-btn"
+                      data-type="POST" data-form="stateForm" data-url="/admin/locations/add-state">Save State</button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-4">
+        <div class="card shadow-sm border-0 h-100">
+          <div class="card-header bg-success text-white py-3">
+            <h6 class="mb-0"><i class="fas fa-city me-2"></i>Add New District</h6>
+          </div>
+          <div class="card-body">
+            <form id="districtForm">
+              <div class="mb-3">
+                <label class="form-label small fw-bold">Select State</label>
+                <select name="stateId" class="form-select" required>
+                  <option value="">-- Select State --</option>
+                  <option th:each="s : ${states}" th:value="${s.id}" th:text="${s.name}"></option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label class="form-label small fw-bold">District Name</label>
+                <input type="text" name="name" class="form-control" placeholder="e.g. Vadodara" required
+                       oninput="this.value = this.value.replace(/[^a-zA-Z\s]/g, '')">
+              </div>
+              <button type="button" class="btn btn-success w-100 shadow-sm loc-action-btn"
+                      data-type="POST" data-form="districtForm" data-url="/admin/locations/add-district">Save District</button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-4">
+        <div class="card shadow-sm border-0 h-100">
+          <div class="card-header bg-info text-white py-3">
+            <h6 class="mb-0"><i class="fas fa-house-user me-2"></i>Add New Taluka</h6>
+          </div>
+          <div class="card-body">
+            <form id="talukaForm">
+              <div class="mb-3">
+                <label class="form-label small fw-bold">Select District</label>
+                <select name="districtId" class="form-select" required>
+                  <option value="">-- Select District --</option>
+                  <option th:each="d : ${districts}" th:value="${d.id}" th:text="${d.name}"></option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label class="form-label small fw-bold">Taluka Name</label>
+                <input type="text" name="name" class="form-control" placeholder="e.g. Dabhoi" required
+                       oninput="this.value = this.value.replace(/[^a-zA-Z\s]/g, '')">
+              </div>
+              <button type="button" class="btn btn-info text-white w-100 shadow-sm loc-action-btn"
+                      data-type="POST" data-form="talukaForm" data-url="/admin/locations/add-taluka">Save Taluka</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row mt-5">
+      <div class="col-12">
+        <div class="card shadow-sm border-0">
+          <div class="card-body">
+            <h6 class="fw-bold mb-3">Current Location Structure</h6>
+            <div class="table-responsive">
+              <table class="table table-hover align-middle" id="locationTable">
+                <thead class="table-light">
+                <tr>
+                  <th>State</th>
+                  <th>District</th>
+                  <th>Talukas</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="d : ${districts}">
+                  <td>
+                    <span th:text="${d.state.name}" class="fw-bold"></span>
+                    <div class="mt-1">
+                      <button type="button" class="btn btn-sm text-danger p-0 loc-action-btn"
+                              data-type="GET" th:data-url="'/admin/locations/delete-state/' + ${d.state.id}">
+                        <i class="fas fa-trash"></i>
+                      </button>
+                    </div>
+                  </td>
+                  <td>
+                    <span th:text="${d.name}" class="text-primary fw-bold"></span>
+                    <div class="mt-1">
+                      <button type="button" class="btn btn-sm text-danger p-0 loc-action-btn"
+                              data-type="GET" th:data-url="'/admin/locations/delete-district/' + ${d.id}">
+                        <i class="fas fa-trash"></i>
+                      </button>
+                    </div>
+                  </td>
+                  <td>
+                    <div th:each="t : ${d.talukas}" class="badge bg-light text-dark border d-flex justify-content-between align-items-center mb-1 p-2">
+                      <span th:text="${t.name}" class="taluka-name me-2"></span>
+                      <i class="fas fa-times-circle text-danger cursor-pointer loc-action-btn"
+                         data-type="GET" th:data-url="'/admin/locations/delete-taluka/' + ${t.id}"></i>
+                    </div>
+                  </td>
+                </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

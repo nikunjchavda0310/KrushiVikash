@@ -1,0 +1,49 @@
+<div th:fragment="details" xmlns:th="http://www.w3.org/1999/xhtml">
+  <div class="table-responsive">
+    <table class="table table-borderless align-middle">
+      <thead class="text-muted small text-uppercase">
+      <tr>
+        <th>Product</th>
+        <th>Price</th>
+        <th class="text-center">Qty</th>
+        <th class="text-end">Total</th>
+      </tr>
+      </thead>
+      <tbody>
+      <tr th:each="item : ${order.orderItems}"
+          th:if="${item.product.farmer.id == #vars.loggedInFarmerId}">
+        <td>
+          <div class="d-flex align-items-center">
+            <img th:if="${item.product.image != null && !#strings.isEmpty(item.product.image)}"
+                 th:src="@{'/uploads/' + ${#strings.arraySplit(item.product.image, ',')[0]}}"
+                 class="rounded me-2 shadow-sm"
+                 style="width: 45px; height: 45px; object-fit: cover; border: 1px solid #eee;">
+
+            <div th:unless="${item.product.image != null && !#strings.isEmpty(item.product.image)}"
+                 class="rounded me-2 bg-light d-flex align-items-center justify-content-center"
+                 style="width: 45px; height: 45px; border: 1px solid #eee;">
+              <i class="fas fa-image text-muted"></i>
+            </div>
+
+            <span class="fw-bold text-dark" th:text="${item.product.productName}"></span>
+          </div>
+        </td>
+        <td class="text-muted" th:text="'₹' + ${item.priceAtPurchase}"></td>
+        <td class="text-center">
+          <span class="badge bg-light text-dark border" th:text="${item.quantity}"></span>
+        </td>
+        <td class="text-end fw-bold text-success" th:text="'₹' + (${item.priceAtPurchase} * ${item.quantity})"></td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="bg-success-light p-3 rounded-3 d-flex justify-content-between align-items-center mt-2"
+       style="background-color: #f0fdf4; border: 1px dashed #28a745;">
+    <span class="fw-bold text-dark">Your Earnings from this Order:</span>
+    <span class="h5 mb-0 text-success fw-bold"
+          th:with="myItems=${order.orderItems.?[product.farmer.id == #vars.loggedInFarmerId]},
+                  myTotal=${#aggregates.sum(myItems.![priceAtPurchase * quantity])}"
+          th:text="'₹' + ${myTotal}"></span>
+  </div>
+</div>

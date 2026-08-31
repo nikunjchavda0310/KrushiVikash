@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KrushiVikash Admin Dashboard</title>
+
+    <meta th:if="${_csrf != null}" name="_csrf" th:content="${_csrf.token}"/>
+    <meta th:if="${_csrf != null}" name="_csrf_header" th:content="${_csrf.headerName}"/>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root { --sidebar-bg: #1a233a; --accent: #4e73df; --bg-light: #f4f7f6; }
+        body { background-color: var(--bg-light); font-family: 'Segoe UI', sans-serif; overflow-x: hidden; }
+        .sidebar { min-width: 260px; max-width: 260px; background: var(--sidebar-bg); min-height: 100vh; color: #fff; position: fixed; z-index: 1000; }
+        .main-container { margin-left: 260px; width: calc(100% - 260px); min-height: 100vh; }
+        .nav-link { color: #d1d3e2; padding: 15px 25px; cursor: pointer; display: block; text-decoration: none; transition: 0.3s; }
+        .nav-link:hover { background: #26314d; color: #fff; }
+        .nav-link.active { background: var(--accent); color: white; border-left: 4px solid #fff; }
+        .main-content { padding: 30px; }
+        .card { border: none; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        .loader-wrapper { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 300px; }
+        .custom-alert { border-radius: 10px; display: flex; align-items: center; padding: 15px 20px; margin-bottom: 20px; }
+
+        /* Notification Styles */
+        .notification-dropdown { width: 320px; border: none; border-radius: 10px; }
+        .notification-item { border-bottom: 1px solid #eee; padding: 12px; transition: 0.3s; }
+        .notification-item:hover { background: #f8f9fa; }
+
+        .animated { animation-duration: 0.6s; animation-fill-mode: both; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .fadeIn { animation-name: fadeIn; }
+    </style>
+</head>
+<body>
+
+<div class="d-flex">
+    <nav class="sidebar shadow">
+        <div class="p-4 text-center border-bottom border-secondary mb-3">
+            <h4 class="text-white fw-bold mb-0">KrushiVikash</h4>
+            <small class="text-muted text-uppercase">Admin Panel</small>
+        </div>
+
+        <ul class="nav flex-column mt-2">
+            <li class="nav-item">
+                <a class="nav-link" th:href="@{/admin/index}" id="nav-dashboard">
+                    <i class="fas fa-chart-line me-2"></i> Dashboard Home
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" onclick="loadContent('/admin/profile-fragment', this)" id="nav-customers">
+                    <i class="fas fa-users me-2"></i>
+                    <span>Manage Customers</span>
+
+                    <!-- Red Notification Badge -->
+                    <span th:if="${unreadMessages > 0}"
+                          class="badge rounded-pill bg-danger ms-2 shadow-sm fadeIn animated"
+                          th:text="${unreadMessages}">
+        3
+    </span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" onclick="handleFarmerView('/admin/verify-fragment', this)" id="nav-farmers" style="cursor: pointer;">
+                    <i class="fas fa-tractor me-2"></i> Manage Farmers
+                    <span id="farmer-badge" th:if="${pendingFarmersCount > 0}" class="badge rounded-pill bg-danger ms-2">
+            [[${pendingFarmersCount}]]
+        </span>
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a class="nav-link" onclick="loadContent('/admin/categories/manage-fragment', this)" id="nav-categories">
+                    <i class="fas fa-tags me-2"></i> Manage Categories
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a class="nav-link" onclick="loadContent('/admin/locations/manage-fragment', this)" id="nav-locations">
+                    <i class="fas fa-map-marked-alt me-2"></i> Manage Locations
+                </a>
+            </li>
+
+            <li class="nav-item mt-5 pt-5">
+                <form th:action="@{/logout}" method="post">
+                    <button class="nav-link bg-transparent border-0 w-100 text-start text-danger" type="submit">
+                        <i class="fas fa-sign-out-alt me-2"></i> Logout
+                    </button>
+                </form>
+            </li>
+        </ul>
+    </nav>
+
+    <div class="main-container">
+        <header class="bg-white p-3 shadow-sm d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 text-dark fw-bold">Admin Control Center</h5>
+
+            <div class="d-flex align-items-center">
+                <div class="dropdown me-4">
+                    <a class="text-muted position-relative" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" onclick="markAdminRead()">
+                        <i class="fas fa-bell fa-lg"></i>
+                        <span th:if="${notifCount > 0}" id="admin-notif-badge"
+                              class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+                              style="font-size: 0.65rem;" th:text="${notifCount}">0</span>
+                    </a>
+                    <div class="dropdown-menu dropdown-menu-end shadow-lg notification-dropdown p-0 mt-3">
+                        <div class="p-3 border-bottom bg-light">
+                            <h6 class="m-0 fw-bold">Farmer Replies</h6>
+                        </div>
+                        <div style="max-height: 300px; overflow-y: auto;">
+                            <div th:each="msg : ${adminNotifications}" class="notification-item">
+                                <div class="d-flex align-items-center justify-content-between mb-1">
+                                    <a th:href="@{/admin/index(farmerId=${msg.farmer.id})}"
+                                       class="small text-primary fw-bold text-decoration-none">
+                                        <i class="fas fa-external-link-alt me-1" style="font-size: 0.7rem;"></i>
+                                        <span th:text="${msg.farmer.name}">Farmer Name</span>
+                                    </a>
+                                    <small class="text-muted" style="font-size: 0.7rem;"
+                                           th:text="${#temporals.format(msg.createdAt, 'dd MMM, hh:mm a')}"></small>
+                                </div>
+                                <p class="small mb-0 text-dark bg-light p-2 rounded border-start border-primary border-3"
+                                   th:text="${msg.content}"></p>
+                            </div>
+
+                            <div th:if="${#lists.isEmpty(adminNotifications)}" class="p-4 text-center text-muted">
+                                <i class="fas fa-envelope-open mb-2 fa-2x"></i>
+                                <p class="small mb-0">No new farmer replies.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <span class="me-3 text-muted small">Welcome, <strong th:text="${currentAdmin != null ? currentAdmin.name : 'Administrator'}">Admin</strong></span>
+                <i class="fas fa-user-shield fa-lg text-primary"></i>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div id="message-container">
+                <div th:if="${errorMsg}" class="custom-alert alert-danger shadow-sm">
+                    <i class="fas fa-exclamation-triangle me-3"></i> <span th:text="${errorMsg}" class="fw-bold"></span>
+                </div>
+                <div th:if="${successMsg}" class="custom-alert alert-success shadow-sm">
+                    <i class="fas fa-check-circle me-3"></i> <span th:text="${successMsg}" class="fw-bold"></span>
+                </div>
+            </div>
+
+            <div id="dynamic-area">
+                <th:block th:if="${showPanel and verificationList != null and !verificationList.isEmpty()}">
+                    <div th:replace="~{admin/fragments/inspection-panel :: landRecordPanel}"></div>
+                </th:block>
+
+                <div class="card p-5 text-center border-0 fadeIn animated" th:unless="${showPanel and verificationList != null and !verificationList.isEmpty()}">
+                    <div class="mb-4 text-primary"><i class="fas fa-shield-halved fa-4x"></i></div>
+                    <h2 class="fw-bold">Welcome, Administrator</h2>
+                    <p class="text-muted lead">System is active. Select a category from the sidebar to manage records.</p>
+                    <div class="mt-4">
+                        <button onclick="loadContent('/admin/verify-fragment', document.getElementById('nav-farmers'))" class="btn btn-success px-4 btn-lg shadow-sm">
+                            <i class="fas fa-tractor me-2"></i> Review Pending Farmer Verifications
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<script th:inline="javascript">
+
+    // --- LOAD CONTENT DYNAMICALLY ---
+    function loadContent(url, element = null) {
+        if(element) {
+            document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
+            element.classList.add('active');
+            localStorage.setItem('lastAdminSection', url);
+            localStorage.setItem('lastActiveId', element.id);
+        }
+
+        const panel = document.getElementById('reviewPanel');
+        if(panel) panel.style.display = 'none';
+
+        document.getElementById('dynamic-area').innerHTML = `
+            <div class="loader-wrapper">
+                <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status"></div>
+                <p class="mt-3 text-muted fw-bold">Loading Section...</p>
+            </div>`;
+
+        fetch(url)
+            .then(res => res.text())
+            .then(html => { document.getElementById('dynamic-area').innerHTML = html; })
+            .catch(err => {
+                document.getElementById('dynamic-area').innerHTML = `<div class="alert alert-danger m-5">Failed to load fragment.</div>`;
+            });
+    }
+
+    // --- NEW: CATEGORY FORM SUBMISSION (AJAX) ---
+ function handleCategorySubmit(formId) {
+    const form = document.getElementById(formId);
+    if (!form) {
+        console.error("Form not found:", formId);
+        return;
+    }
+
+    // Basic HTML5 validation check
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+
+    const formData = new FormData(form);
+    const token = document.querySelector('meta[name="_csrf"]')?.content;
+    const header = document.querySelector('meta[name="_csrf_header"]')?.content;
+
+    fetch('/admin/categories/save', {
+        method: 'POST',
+        headers: {
+            [header]: token
+            // Note: Content-Type is set automatically by the browser for FormData
+        },
+        body: formData
+    })
+    .then(async response => {
+        // --- IMPROVED ERROR CATCHING ---
+        // If Tomcat rejects the request (Status 400, 413, or 500)
+        if (!response.ok) {
+            const errorBody = await response.text();
+            if (errorBody.includes("FileCountLimitExceededException") || response.status === 500) {
+                throw new Error("TOMCAT_LIMIT_REACHED");
+            }
+            throw new Error("SERVER_ERROR");
+        }
+
+        const status = response.headers.get('X-Status');
+        const html = await response.text();
+
+        // Update the UI with the returned fragment (shows validation messages)
+        const dynamicArea = document.getElementById('dynamic-area');
+        if (dynamicArea) {
+            dynamicArea.innerHTML = html;
+        }
+
+        // Only show Success Alert if the Controller sent the success header
+        if (status === 'success') {
+            Swal.fire({
+                icon: 'success',
+                title: 'Category Saved!',
+                showConfirmButton: false,
+                timer: 1500,
+                toast: true,
+                position: 'top-end'
+            });
+
+            // Reset the name input specifically
+            const nameInput = form.querySelector('input[name="name"]');
+            if (nameInput) nameInput.value = '';
+        }
+    })
+    .catch(err => {
+        console.error("Category Submit Error:", err);
+
+        if (err.message === "TOMCAT_LIMIT_REACHED") {
+            Swal.fire({
+                icon: 'error',
+                title: 'Limit Exceeded',
+                text: 'The server rejected the number of form fields. Please ensure "server.tomcat.max-multipart-names=100" is in your application.properties.'
+            });
+        } else {
+            Swal.fire({
+                icon: 'error',
+                title: 'Submission Failed',
+                text: 'Could not save category. Please check your connection.'
+            });
+        }
+    });
+}
+    // --- NEW: CATEGORY DELETE (AJAX) ---
+    function handleCategoryDelete(id) {
+    Swal.fire({
+        title: 'Are you sure?',
+        text: "This will remove the category permanently!",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Yes, delete it!'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch(`/admin/categories/delete/${id}`)
+            .then(res => {
+                // Check if the request itself was successful (status 200)
+                if (!res.ok) throw new Error("Server error");
+                return res.text();
+            })
+            .then(html => {
+                // 1. Update the UI with the fragment (which might contain an error alert)
+                document.getElementById('dynamic-area').innerHTML = html;
+
+                // 2. Logic Check: Did the HTML fragment include an error message?
+                // We check if the 'alert-danger' class exists in the new HTML
+                const hasError = html.includes('alert-danger');
+
+                if (!hasError) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Deleted!',
+                        showConfirmButton: false,
+                        timer: 1000,
+                        toast: true,
+                        position: 'top-end'
+                    });
+                }
+                // If there was an error, the HTML fragment's th:if="${error}"
+                // will already be visible in the 'dynamic-area', so we don't
+                // show a success Swal.
+            })
+            .catch(err => {
+                console.error(err);
+                Swal.fire('Error', 'Delete failed due to a network or server issue', 'error');
+            });
+        }
+    });
+}
+    // --- LOAD EDIT FORM ---
+    function loadEditForm(type, id) {
+        const url = `/admin/edit-form/${type}/${id}`;
+        document.getElementById('dynamic-area').innerHTML = `
+            <div class="loader-wrapper text-center">
+                <div class="spinner-border text-warning" role="status"></div>
+                <p class="mt-2 text-muted">Fetching ${type} details...</p>
+            </div>`;
+
+        fetch(url)
+            .then(res => res.text())
+            .then(html => { document.getElementById('dynamic-area').innerHTML = html; })
+            .catch(err => Swal.fire('Error', 'Could not load form', 'error'));
+    }
+
+    // --- CONFIRM DELETE (For Users/Farmers) ---
+    function confirmDelete(type, id) {
+        Swal.fire({
+            title: 'Are you sure?',
+            text: "This user's data will be permanently removed!",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Yes, delete it!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                window.location.href = `/admin/delete/${type}/${id}`;
+            }
+        });
+    }
+
+    // --- MARK NOTIFICATIONS READ ---
+    function markAdminRead() {
+        const badge = document.getElementById('admin-notif-badge');
+        if (!badge) return;
+        const token = document.querySelector('meta[name="_csrf"]')?.content;
+        const header = document.querySelector('meta[name="_csrf_header"]')?.content;
+
+        fetch('/admin/mark-replies-read', {
+            method: 'POST',
+            headers: { [header]: token }
+        }).then(res => {
+            if (res.ok) badge.style.display = 'none';
+        });
+    }
+
+    // --- WINDOW ONLOAD LOGIC ---
+    // --- 1. WINDOW ONLOAD LOGIC ---
+window.onload = function() {
+    const urlParams = new URLSearchParams(window.location.search);
+
+    // Handle initial success flags if redirected from a non-AJAX source
+    if (urlParams.has('verifySuccess')) {
+        Swal.fire({ icon: 'success', title: 'Verified!', text: 'Farmer land records approved.', timer: 3000 });
+    }
+    else if (urlParams.has('updateSuccess') || urlParams.has('clientUpdateSuccess')) {
+        // Trigger the success message
+        Swal.fire({ icon: 'success', title: 'Updated!', text: 'Profile changes saved.', timer: 2000 });
+
+        // Reload the appropriate fragment
+        const targetUrl = urlParams.has('updateSuccess') ? '/admin/verify-fragment' : '/admin/client-fragment';
+        const targetNav = urlParams.has('updateSuccess') ? document.getElementById('nav-farmers') : document.getElementById('nav-clients');
+        loadContent(targetUrl, targetNav);
+    }
+
+    // Clean URL AFTER checking params
+    if (window.history.replaceState) {
+        const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+        window.history.replaceState({path:cleanUrl}, '', cleanUrl);
+    }
+};
+
+   document.addEventListener('click', function(e) {
+    const btn = e.target.closest('.loc-action-btn');
+    if (!btn) return;
+
+    e.preventDefault();
+
+    const url = btn.dataset.url;
+    const method = btn.dataset.type || 'GET';
+    const formId = btn.dataset.form;
+
+    // --- CASE 1: DELETE (GET) ---
+    if (method === 'GET') {
+        Swal.fire({
+            title: 'Are you sure?',
+            text: "You won't be able to revert this!",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Yes, delete it!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                performLocationAjax(url, { method: 'GET' });
+            }
+        });
+    }
+
+    // --- CASE 2: SAVE (POST) ---
+    else {
+        const form = document.getElementById(formId);
+        if (!form.checkValidity()) {
+            form.reportValidity();
+            return;
+        }
+
+        const options = {
+            method: 'POST',
+            body: new FormData(form),
+            headers: {}
+        };
+
+        // CSRF Protection
+        const token = document.querySelector('meta[name="_csrf"]')?.content;
+        const header = document.querySelector('meta[name="_csrf_header"]')?.content;
+        if (header && token) options.headers[header] = token;
+
+        performLocationAjax(url, options);
+    }
+});
+
+function performLocationAjax(url, options) {
+    fetch(url, options)
+        .then(res => res.text())
+        .then(html => {
+            const container = document.getElementById('dynamic-area');
+            if (container) {
+                container.innerHTML = html;
+
+                // Show a small "Success" toast like in Farmer/Customer management
+                const Toast = Swal.mixin({
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 3000,
+                    timerProgressBar: true
+                });
+                Toast.fire({
+                    icon: 'success',
+                    title: 'Action performed successfully'
+                });
+            }
+        })
+        .catch(err => {
+            console.error("Error:", err);
+            Swal.fire('Error!', 'Something went wrong.', 'error');
+        });
+}
+
+function handleProfileUpdate(event, formId) {
+    event.preventDefault();
+    const form = document.getElementById(formId);
+    const formData = new FormData(form);
+    const url = form.getAttribute('action');
+
+    const token = document.querySelector('meta[name="_csrf"]')?.content;
+    const header = document.querySelector('meta[name="_csrf_header"]')?.content;
+
+    fetch(url, {
+        method: 'POST',
+        headers: { [header]: token },
+        body: formData
+    })
+    .then(res => {
+        // Even if the controller redirects, 'res.ok' will be true
+        if (res.ok) {
+            Swal.fire({
+                icon: 'success',
+                title: 'Success!',
+                text: 'Profile updated successfully.',
+                timer: 1500,
+                showConfirmButton: false
+            });
+
+            const isFarmer = url.includes('farmer');
+
+            // FIX: Match your Controller @GetMapping exactly
+            // For Clients, your code uses "/admin/profile-fragment"
+            const reloadUrl = isFarmer ? '/admin/verify-fragment' : '/admin/profile-fragment';
+
+            console.log("Reloading from correct endpoint:", reloadUrl);
+            loadContent(reloadUrl);
+        } else {
+            Swal.fire('Error', 'Update failed on server', 'error');
+        }
+    })
+    .catch(err => {
+        console.error("AJAX Error:", err);
+        Swal.fire('Error', 'Update failed', 'error');
+    });
+}
+   function handleCategorySubmit(formId) {
+    const form = document.getElementById(formId);
+    if (!form.checkValidity()) { form.reportValidity(); return; }
+
+    const formData = new FormData(form);
+    const token = document.querySelector('meta[name="_csrf"]')?.content;
+    const header = document.querySelector('meta[name="_csrf_header"]')?.content;
+
+    fetch('/admin/categories/save', {
+        method: 'POST',
+        headers: { [header]: token },
+        body: formData
+    })
+    .then(response => {
+        const status = response.headers.get('X-Status');
+
+        return response.text().then(html => {
+            // 1. Update the UI first
+            document.getElementById('dynamic-area').innerHTML = html;
+
+            // 2. Show alert only on success
+            if (status === 'success') {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Category Saved!',
+                    showConfirmButton: false,
+                    timer: 1500,
+                    toast: true,
+                    position: 'top-end'
+                });
+
+
+            }
+        });
+    })
+    .catch(err => {
+        console.error(err);
+        Swal.fire('Error', 'Connection failed', 'error');
+    });
+}
+
+    function handleFarmerView(url, element) {
+    // 1. Load the farmer directory fragment
+    loadContent(url, element);
+
+    // 2. Hide the red badge from the sidebar immediately
+    const badge = document.getElementById('farmer-badge');
+    if (badge) {
+        badge.style.transition = "opacity 0.5s ease";
+        badge.style.opacity = "0";
+        setTimeout(() => badge.remove(), 500);
+    }
+}
+
+  let currentClientId = null;
+
+function viewContactMessages(clientId) {
+    currentClientId = clientId;
+
+    fetch('/admin/client/messages/' + clientId)
+        .then(response => response.text())
+        .then(html => {
+            const dynamicArea = document.getElementById('dynamic-area');
+            if (dynamicArea) {
+                dynamicArea.innerHTML = html;
+
+                // FORCE SCROLL TO BOTTOM
+                const chatBox = dynamicArea.querySelector('.conversation-box');
+                if (chatBox) {
+                    // Small delay to let the images/text load before scrolling
+                    setTimeout(() => {
+                        chatBox.scrollTo({
+                            top: chatBox.scrollHeight,
+                            behavior: 'smooth'
+                        });
+                    }, 100);
+                }
+            }
+        });
+}
+
+function sendAdminReply(messageId) {
+    // 1. UPDATED: Target the persistent input ID from the new HTML
+    const replyInput = document.getElementById('main-reply-input');
+
+    // Safety check in case the element isn't found
+    if (!replyInput) {
+        console.error("Could not find the reply input element.");
+        return;
+    }
+
+    const replyText = replyInput.value;
+
+    if (!replyText.trim()) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Empty Message',
+            text: 'Please type a response.',
+            toast: true,
+            position: 'top-end',
+            timer: 3000,
+            showConfirmButton: false
+        });
+        return;
+    }
+
+    const token = document.querySelector('meta[name="_csrf"]')?.content;
+    const header = document.querySelector('meta[name="_csrf_header"]')?.content;
+
+    const formData = new URLSearchParams();
+    formData.append('replyText', replyText);
+
+    fetch('/admin/client/reply-message/' + messageId, {
+        method: 'POST',
+        headers: {
+            [header]: token,
+            'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: formData
+    })
+    .then(res => {
+        if (res.ok) {
+            // 2. UPDATED: Clear the input box so it's ready for the next message
+            replyInput.value = '';
+
+            Swal.fire({
+                icon: 'success',
+                title: 'Reply Sent!',
+                toast: true,
+                position: 'top-end',
+                timer: 2000,
+                showConfirmButton: false
+            });
+
+            // Refresh the UI
+            if (currentClientId) {
+                viewContactMessages(currentClientId);
+            }
+        } else {
+            throw new Error("Server returned an error");
+        }
+    })
+    .catch(err => {
+        console.error("Reply Error:", err);
+        Swal.fire('Error', 'Failed to save reply to database.', 'error');
+    });
+}
+
+    function viewFarmerOrders(farmerId, farmerName) {
+    const dynamicArea = document.getElementById('dynamic-area');
+
+    // 1. Loading State
+    dynamicArea.innerHTML = `
+        <div class="text-center p-5 animate__animated animate__fadeIn">
+            <div class="spinner-border text-info" role="status"></div>
+            <p class="mt-3 text-muted">Loading sales data for <strong>${farmerName}</strong>...</p>
+        </div>`;
+
+    // 2. Fetch the Fragment from the Controller
+    fetch(`/admin/orders/farmer/${farmerId}`, {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(response => {
+        if (!response.ok) throw new Error('No orders found or server error');
+        return response.text();
+    })
+    .then(html => {
+        // 3. Inject the HTML Table Fragment
+        dynamicArea.innerHTML = html;
+
+        // 4. Success feedback
+        Swal.fire({
+            icon: 'success',
+            title: 'Orders Loaded',
+            text: `Viewing directory for ${farmerName}`,
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 2000
+        });
+    })
+    .catch(error => {
+        console.error(error);
+        Swal.fire({
+            icon: 'info',
+            title: 'No Data',
+            text: `Farmer ${farmerName} has no registered orders yet.`,
+            confirmButtonColor: '#28a745'
+        });
+        // Optional: reload the farmer directory if the fetch fails
+        // loadContent('/admin/farmer-directory');
+    });
+}
+
+// Helper for the "Details" button inside the fragment
+function viewOrderDetails(orderId, farmerId) {
+    const modalElement = document.getElementById('farmerOrderModal');
+    const content = document.getElementById('modalContent');
+
+    if (!content || !modalElement) return;
+
+    content.innerHTML = `
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-2 text-muted">Loading product images...</p>
+        </div>`;
+
+    const bsModal = new bootstrap.Modal(modalElement);
+    bsModal.show();
+
+    fetch(`/admin/orders/${orderId}/items?farmerId=${farmerId}`)
+        .then(res => res.json())
+        .then(items => {
+            if (items.length === 0) {
+                content.innerHTML = '<p class="p-4 text-center">No items found.</p>';
+                return;
+            }
+
+            let html = '<ul class="list-group list-group-flush">';
+            let farmerTotal = 0;
+
+            items.forEach(item => {
+                const sub = item.price * item.quantity;
+                farmerTotal += sub;
+
+                // Use encodeURIComponent to handle spaces in filenames
+                const imgName = item.productImage ? item.productImage : 'no-image.png';
+                const imgPath = `/uploads/${encodeURIComponent(imgName)}`;
+
+                html += `
+                    <li class="list-group-item d-flex justify-content-between align-items-center p-3">
+                        <div class="d-flex align-items-center">
+                            <img src="${imgPath}"
+                                 class="rounded border shadow-sm me-3"
+                                 style="width: 60px; height: 60px; object-fit: cover;"
+                                 onerror="this.onerror=null; this.src='/images/no-image.png';">
+                            <div>
+                                <div class="fw-bold text-dark">${item.productName}</div>
+                                <small class="text-muted">₹${item.price.toFixed(2)} x ${item.quantity}</small>
+                            </div>
+                        </div>
+                        <span class="fw-bold text-primary">₹${sub.toFixed(2)}</span>
+                    </li>`;
+            });
+
+            html += `
+                <li class="list-group-item bg-light d-flex justify-content-between align-items-center p-3">
+                    <span class="fw-bold text-uppercase small text-muted">Farmer's Revenue</span>
+                    <span class="h5 mb-0 fw-bold text-success">₹${farmerTotal.toFixed(2)}</span>
+                </li></ul>`;
+
+            content.innerHTML = html;
+        })
+        .catch(err => {
+            console.error("Error:", err);
+            content.innerHTML = '<div class="alert alert-danger m-3">Error loading details.</div>';
+        });
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,207 @@
+<div th:fragment="update-form" xmlns:th="http://www.thymeleaf.org">
+  <div class="card shadow-lg border-0 animated fadeIn" style="border-radius: 15px; overflow: hidden;">
+
+    <div class="card-header bg-warning text-dark text-center py-4">
+      <h3 class="m-0 fw-bold"><i class="fas fa-edit me-2"></i> Update Land Verification</h3>
+      <p class="m-0 opacity-75 small">Modifying existing application for <span th:text="${farmer.name}"></span></p>
+    </div>
+
+    <div class="card-body p-4 p-md-5">
+
+      <div th:if="${verification.status == 'APPROVED' || verification.status == 'VERIFIED'}"
+           class="alert alert-info border-0 shadow-sm mb-4 py-3">
+        <div class="d-flex">
+          <i class="fas fa-info-circle fa-2x me-3"></i>
+
+        </div>
+      </div>
+
+      <form id="updateForm" novalidate enctype="multipart/form-data">
+        <input type="hidden" name="id" th:value="${verification.id}">
+
+        <div class="row g-4">
+          <div class="col-md-12">
+            <label class="form-label fw-bold">Full Name (As per Aadhaar)</label>
+            <input type="text" name="fullName" class="form-control form-control-lg" th:value="${verification.fullName}" required>
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label fw-bold">State*</label>
+            <select id="stateEdit" name="state" class="form-select form-control-lg" required onchange="loadDistrictsEdit()">
+              <option value="">-- Select State --</option>
+              <option th:each="s : ${states}" th:value="${s.id}" th:text="${s.name}"
+                      th:selected="${verification.state?.id == s.id}"></option>
+            </select>
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label fw-bold">District*</label>
+            <select id="districtEdit" name="district" class="form-select form-control-lg" required onchange="loadTalukasEdit()">
+              <option value="">-- Select District --</option>
+            </select>
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label fw-bold">Taluka*</label>
+            <select id="talukaEdit" name="taluka" class="form-select form-control-lg" required>
+              <option value="">-- Select Taluka --</option>
+            </select>
+          </div>
+
+          <div class="col-md-8">
+            <label class="form-label fw-bold">Village Name</label>
+            <input type="text" name="village" class="form-control form-control-lg" th:value="${verification.village}" required>
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label fw-bold">Pin Code</label>
+            <input type="text" name="pincode" class="form-control form-control-lg" th:value="${verification.pincode}" required>
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label fw-bold">7/12 Survey Number</label>
+            <input type="text" name="regNumber" class="form-control form-control-lg" th:value="${verification.regNumber}" required>
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label fw-bold">Farm Area (Vighas)</label>
+            <input type="number" name="farmArea" class="form-control form-control-lg" th:value="${verification.farmArea}" step="0.01" required>
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label fw-bold">Update 7/12 Document <span class="text-muted small">(Images only)</span></label>
+            <input type="file" name="satBaraFile" class="form-control" accept="image/png, image/jpeg, image/jpg">
+            <div class="mt-2 small text-success d-flex align-items-center">
+              <i class="fas fa-file-alt me-2"></i>
+              <span class="text-truncate" style="max-width: 200px;" th:text="${verification.satBaraFile}">current_file.pdf</span>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label fw-bold">Update Aadhaar Card <span class="text-muted small">(Images only)</span></label>
+            <input type="file" name="aadhaarFile" class="form-control" accept="image/png, image/jpeg, image/jpg">
+            <div class="mt-2 small text-primary d-flex align-items-center">
+              <i class="fas fa-id-card me-2"></i>
+              <span class="text-truncate" style="max-width: 200px;" th:text="${verification.aadhaarFile}">current_id.pdf</span>
+            </div>
+          </div>
+
+        <div class="mt-5 d-flex justify-content-between pt-4 border-top">
+          <button type="button" class="btn btn-outline-secondary btn-lg px-4" onclick="loadContent('/farmer/verify-fragment')">
+            <i class="fas fa-times me-2"></i> Cancel
+          </button>
+          <button type="button" class="btn btn-warning btn-lg px-5 fw-bold shadow-sm" onclick="submitUpdate()">
+            Save & Re-submit <i class="fas fa-save ms-2"></i>
+          </button>
+        </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script th:inline="javascript">
+    (function() {
+      const getCsrf = () => ({
+          token: document.querySelector('meta[name="_csrf"]')?.content,
+          header: document.querySelector('meta[name="_csrf_header"]')?.content
+      });
+
+      window.loadDistrictsEdit = function() {
+        const stateId = document.getElementById('stateEdit').value;
+        const distSelect = document.getElementById('districtEdit');
+        const csrf = getCsrf();
+        if(!stateId) return;
+
+        fetch(`/api/locations/districts/${stateId}`, { headers: { [csrf.header]: csrf.token } })
+          .then(r => r.json()).then(data => {
+            distSelect.innerHTML = '<option value="">-- Select District --</option>';
+            data.forEach(d => distSelect.add(new Option(d.name, d.id)));
+            const savedDistId = /*[[${verification.district?.id}]]*/ null;
+            if(savedDistId) {
+                distSelect.value = savedDistId;
+                window.loadTalukasEdit();
+            }
+          });
+      };
+
+      window.loadTalukasEdit = function() {
+        const distId = document.getElementById('districtEdit').value;
+        const talSelect = document.getElementById('talukaEdit');
+        const csrf = getCsrf();
+        if(!distId) return;
+
+        fetch(`/api/locations/talukas/${distId}`, { headers: { [csrf.header]: csrf.token } })
+          .then(r => r.json()).then(data => {
+            talSelect.innerHTML = '<option value="">-- Select Taluka --</option>';
+            data.forEach(t => talSelect.add(new Option(t.name, t.id)));
+            const savedTalId = /*[[${verification.taluka?.id}]]*/ null;
+            if(savedTalId) talSelect.value = savedTalId;
+          });
+      };
+
+      if(document.getElementById('stateEdit')?.value) {
+          window.loadDistrictsEdit();
+      }
+
+   window.submitUpdate = function() {
+    const formElement = document.getElementById('updateForm');
+    const rawFormData = new FormData(formElement);
+
+    // --- FILE VALIDATION START ---
+    const allowedExtensions = /(\.jpg|\.jpeg|\.png)$/i;
+    const fileInputs = formElement.querySelectorAll('input[type="file"]');
+    let isValid = true;
+
+    fileInputs.forEach(input => {
+        const file = input.files[0];
+        if (file && !allowedExtensions.exec(file.name)) {
+            Swal.fire('Invalid File', `File "${file.name}" is not an image. Please upload JPG or PNG.`, 'error');
+            isValid = false;
+        }
+    });
+
+    if (!isValid) return; // Stop the function if files are wrong
+    // --- FILE VALIDATION END ---
+
+    const finalFormData = new FormData();
+    const textData = {};
+
+    rawFormData.forEach((value, key) => {
+        if (value instanceof File && value.name) {
+            finalFormData.append(key, value);
+        } else if (!(value instanceof File)) {
+            textData[key] = value;
+        }
+    });
+
+    finalFormData.append('data', JSON.stringify(textData));
+    const csrf = getCsrf();
+
+        Swal.fire({
+            title: 'Re-submitting...',
+            text: 'Updating your records.',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+
+        fetch('/farmer/submit-verification', {
+            method: 'POST',
+            body: finalFormData,
+            headers: { [csrf.header]: csrf.token }
+        })
+        .then(async res => {
+            const result = await res.text();
+            if (result === "success") return result;
+            throw new Error(result);
+        })
+        .then(() => {
+            Swal.fire('Success!', 'Application re-submitted.', 'success')
+                .then(() => loadContent('/farmer/verify-fragment'));
+        })
+        .catch(err => {
+            Swal.fire('Error', err.message, 'error');
+        });
+      };
+    })(); // <--- THIS WAS MISSING
+  </script>
+</div>

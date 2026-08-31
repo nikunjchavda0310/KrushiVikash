@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<div th:fragment="contactPanel" id="contact-panel-container" class="card shadow-sm border-0 mb-4 fadeIn animated">
+
+  <!-- Header -->
+  <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center py-3">
+    <h6 class="mb-0 fw-bold">
+      <i class="fas fa-envelope-open-text me-2"></i>
+      Customer Support: <span th:text="${clientName}"></span>
+    </h6>
+    <button type="button" class="btn-close btn-close-white" onclick="document.getElementById('dynamic-area').innerHTML=''"></button>
+  </div>
+
+  <div class="card-body p-4 bg-light">
+    <h6 class="fw-bold text-primary mb-3 small text-uppercase">
+      <i class="fas fa-history me-2"></i> Conversation History
+    </h6>
+
+    <!-- Scrollable Conversation Box -->
+    <div class="conversation-box mb-4 p-3 bg-white rounded border shadow-sm" style="max-height: 450px; overflow-y: auto;">
+      <th:block th:if="${contactMessages != null}">
+        <div th:each="msg : ${contactMessages}" class="mb-4">
+
+          <!-- 1. CUSTOMER MESSAGE -->
+          <div class="d-flex flex-column align-items-start mb-3">
+            <div style="max-width: 80%; background: #f1f3f4; border-radius: 15px 15px 15px 0; padding: 12px 16px; border: 1px solid #dee2e6;">
+              <div class="d-flex justify-content-between align-items-center mb-1 gap-4">
+                <strong class="small text-primary" th:text="${clientName}">Client</strong>
+                <small class="text-muted" style="font-size: 0.65rem;"
+                       th:text="${msg.submittedAt != null ? #temporals.format(msg.submittedAt, 'dd MMM, hh:mm a') : ''}"></small>
+              </div>
+              <p class="mb-0 text-dark" style="font-size: 0.9rem;" th:text="${msg.msg}"></p>
+            </div>
+          </div>
+
+          <!-- 2. ADMIN REPLY -->
+          <!-- THE ADMIN REPLIES (Separate bubbles) -->
+          <div th:each="reply : ${msg.replies}" class="d-flex flex-column align-items-end mb-2">
+            <div class="admin-bubble shadow-sm"
+                 style="max-width: 75%; background: #e3f2fd; border-radius: 15px 15px 0 15px; padding: 12px 16px; border: 1px solid #bbdefb;">
+              <div class="d-flex justify-content-between align-items-center mb-1 gap-4">
+                <strong class="small text-dark">You (Admin)</strong>
+                <small class="text-muted" style="font-size: 0.65rem;"
+                       th:text="${#temporals.format(reply.sentAt, 'dd MMM, hh:mm a')}"></small>
+              </div>
+              <p class="mb-0 text-dark" style="font-size: 0.9rem;" th:text="${reply.message}"></p>
+            </div>
+          </div>
+        </div>
+      </th:block>
+
+      <!-- Empty State -->
+      <div th:if="${#lists.isEmpty(contactMessages)}" class="text-center py-5 text-muted">
+        <small><i class="fas fa-comment-slash me-1"></i> No inquiries found.</small>
+      </div>
+    </div>
+
+    <!-- 3. PERSISTENT REPLY FORM (Fixed at bottom) -->
+    <div th:if="${not #lists.isEmpty(contactMessages)}" class="mt-2 pt-3 border-top">
+      <div class="p-3 rounded bg-white border" style="border-style: solid !important;">
+        <h6 class="fw-bold text-secondary mb-3 small text-uppercase">
+          <i class="fas fa-reply me-2"></i> Send a Message
+        </h6>
+        <div class="row g-2 align-items-center">
+          <div class="col-md-10">
+            <!-- Generic ID so we don't have to keep track of message IDs in the loop -->
+            <textarea id="main-reply-input" class="form-control border-primary" rows="2"
+                      placeholder="Type your response here..."></textarea>
+          </div>
+          <div class="col-md-2">
+            <!-- We target the ID of the most recent message in the list -->
+            <button type="button" class="btn btn-primary w-100 py-3 shadow-sm"
+                    th:with="lastMsg=${contactMessages[contactMessages.size()-1]}"
+                    th:onclick="'sendAdminReply(' + ${lastMsg.id} + ')'">
+              <i class="fas fa-paper-plane"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="text-center mt-3">
+      <small class="text-muted" style="font-size: 0.7rem;">
+        <i class="fas fa-shield-alt me-1"></i> KrushiVikash Secure Admin Channel
+      </small>
+    </div>
+  </div>
+</div>
+</body>
+</html>

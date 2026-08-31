@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Checkout | KrushiVikash</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+  <style>
+    body { background-color: #f4f7f6; font-family: 'Poppins', sans-serif; }
+    .checkout-container { padding: 50px 0; }
+    .section-card { background: #fff; border-radius: 15px; padding: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); border: none; margin-bottom: 20px; }
+
+    /* Top Error Styling */
+    .field-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+    .top-error { color: #dc3545; font-size: 0.75rem; font-weight: 600; display: none; }
+    .input-error { border-color: #dc3545 !important; background-color: #fff8f8 !important; }
+
+    /* Payment Styles */
+    .payment-inner-box { background: #f8f9fa; border-radius: 12px; padding: 20px; border: 1px solid #eee; }
+    .card-input-group { border-bottom: 1px solid #dee2e6; margin-bottom: 15px; padding-bottom: 5px; }
+    .mini-label { font-size: 0.7rem; color: #adb5bd; text-transform: uppercase; font-weight: 700; }
+    .border-start-custom { border-left: 1px solid #dee2e6; padding-left: 15px; }
+
+    /* Summary Styles */
+    .order-summary-list { background: #fdfdfd; border-radius: 10px; padding: 20px; border: 1px dashed #27ae60; }
+    .product-line { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 0.95rem; }
+    .grand-total-box { background: #27ae60; color: white; padding: 15px; border-radius: 10px; text-align: center; margin-top: 15px; }
+
+    .btn-place-order { background: #27ae60; color: white; border: none; padding: 15px; border-radius: 10px; font-weight: 700; width: 100%; text-transform: uppercase; letter-spacing: 1px; transition: 0.3s; }
+    .btn-place-order:hover { background: #219150; transform: translateY(-2px); }
+    .sticky-summary { position: sticky; top: 100px; }
+
+    /* UPI Modal Styles */
+    .upi-modal { display: none; position: fixed; z-index: 1050; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); }
+    .upi-content { background: white; margin: 10% auto; padding: 30px; border-radius: 20px; width: 350px; text-align: center; position: relative; }
+    #qrcode img { margin: 0 auto; border: 10px solid #fff; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    .utr-input { border: 2px solid #eee; border-radius: 8px; padding: 10px; width: 100%; margin-top: 15px; font-weight: bold; text-align: center; }
+
+    /* UTR Error Style */
+    .utr-error-msg { color: #dc3545; font-size: 0.8rem; font-weight: bold; margin-top: 5px; display: none; }
+  </style>
+</head>
+<body>
+
+<div th:replace="~{fragments/client_header :: client_header}"></div>
+
+<div id="upiModal" class="upi-modal">
+  <div class="upi-content">
+    <h5 class="fw-bold mb-3">Scan & Pay with GPay/PhonePe</h5>
+    <div id="qrcode"></div>
+    <hr>
+    <label class="small fw-bold text-danger">Enter 12-digit UTR / Transaction ID</label>
+    <input type="text" id="utrField" name="transactionId" class="utr-input" placeholder="e.g. 123456789012" maxlength="12">
+
+    <div id="utrError" class="utr-error-msg" style="color: #dc3545; font-size: 0.8rem; font-weight: bold; display: none;">
+      Invalid 12-digit Transaction ID. Please check your receipt.
+    </div>
+
+    <button type="button" onclick="confirmUPIPayment()" class="btn btn-success w-100 mt-3 fw-bold">Confirm Transaction</button>
+    <button type="button" onclick="closeUPIModal()" class="btn btn-link btn-sm text-muted mt-2">Cancel</button>
+  </div>
+</div>
+
+<div class="container checkout-container">
+  <form th:action="@{/checkout/place_order}" method="POST" id="checkoutForm" novalidate>
+    <div class="row g-4">
+
+      <input type="hidden" name="transactionId" id="hiddenTransactionId">
+
+      <div class="col-lg-7">
+        <div class="section-card">
+          <h4 class="fw-bold mb-4"><i class="fas fa-shipping-fast text-success me-2"></i> Shipping Details</h4>
+          <div class="row">
+            <div class="col-md-12 mb-3">
+              <div class="field-header">
+                <label class="form-label fw-bold small mb-0">Full Name</label>
+                <span class="top-error" id="err-name">Invalid Name</span>
+              </div>
+              <input type="text" name="name" id="name" class="form-control"
+                     th:value="${client.name}" placeholder="Enter Name">
+            </div>
+
+            <div class="col-md-6 mb-3">
+              <div class="field-header">
+                <label class="form-label fw-bold small mb-0">Phone Number</label>
+                <span class="top-error" id="err-number">10 Digits Required</span>
+              </div>
+              <input type="text" name="number" id="number" class="form-control"
+                     th:value="${client.contact}" placeholder="9876543210">
+            </div>
+
+            <div class="col-md-6 mb-3">
+              <div class="field-header">
+                <label class="form-label fw-bold small mb-0">Email Address</label>
+                <span class="top-error" id="err-email">Invalid Email</span>
+              </div>
+              <input type="email" name="email" id="email" class="form-control"
+                     th:value="${client.email}" placeholder="email@example.com">
+            </div>
+
+            <div class="col-md-12 mb-3">
+              <div class="field-header">
+                <label class="form-label fw-bold small mb-0">Shipping Address</label>
+                <span class="top-error" id="err-address">Address Required</span>
+              </div>
+              <textarea name="address" id="address" class="form-control" rows="2"
+                        placeholder="Flat No, Street, Landmark, Village..."
+                        th:text="${client.address}"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-card">
+          <h4 class="fw-bold mb-4 text-center">Payment Settings</h4>
+          <div class="mb-4 text-center">
+            <label class="mini-label">Choose Method</label>
+            <select name="method" id="paymentMethod" class="form-select form-select-lg" onchange="togglePaymentSections()">
+              <option value="cash on delivery">Cash on Delivery (COD)</option>
+              <option value="upi">UPI / Scanner</option>
+              <option value="credit card">Credit / Debit Card</option>
+            </select>
+          </div>
+
+          <div id="cardDetailsSection" style="display: none;">
+            <div class="payment-inner-box">
+              <div class="card-input-group">
+                <div class="field-header">
+                  <span class="mini-label">Card holder name</span>
+                  <span class="top-error" id="err-cardHolder">Name Required</span>
+                </div>
+                <input type="text" id="cardHolderName" name="cardHolder" class="form-control border-0 bg-transparent p-0 fw-bold" placeholder="Full Name">
+              </div>
+
+              <div class="row g-0 border-top pt-2 mt-2">
+                <div class="col-6">
+                  <div class="field-header">
+                    <span class="mini-label">Card number</span>
+                    <span class="top-error" id="err-cardNumber">16 Digits</span>
+                  </div>
+                  <div class="d-flex align-items-center">
+                    <i id="cardTypeIcon" class="fab fa-credit-card me-2 text-muted" style="display: none;"></i>
+                    <input type="text" id="cardNumberInput" name="cardNumber" class="form-control border-0 bg-transparent p-0 fw-bold" placeholder="XXXX-XXXX-XXXX-XXXX">
+                  </div>
+                </div>
+
+                <div class="col-3 border-start-custom">
+                  <div class="field-header">
+                    <span class="mini-label">Exp. date</span>
+                    <span class="top-error" id="err-expDate">MM/YY</span>
+                  </div>
+                  <input type="text" id="expDateInput" name="expDate" class="form-control border-0 bg-transparent p-0 fw-bold" placeholder="MM/YY">
+                </div>
+
+                <div class="col-3 border-start-custom">
+                  <div class="field-header">
+                    <span class="mini-label">CVV</span>
+                    <span class="top-error" id="err-cvv">3 Digits</span>
+                  </div>
+                  <input type="password" id="cvvInput" name="cvv" class="form-control border-0 bg-transparent p-0 fw-bold" placeholder="***">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-5">
+        <div class="sticky-summary">
+          <div class="section-card">
+            <h4 class="fw-bold mb-3 text-dark">Order Summary</h4>
+            <div class="order-summary-list mb-3">
+              <div th:each="item : ${cartItems}" class="product-line">
+                <span>
+                    <span th:text="${item.product.productName}">Product</span>
+                    <small class="text-muted" th:text="'(x' + ${item.quantity} + ')'"></small>
+                </span>
+                <span class="fw-bold" th:text="'₹' + ${item.product.price * item.quantity}">₹0</span>
+              </div>
+              <hr>
+              <div class="d-flex justify-content-between text-muted small">
+                <span>Shipping Fee</span>
+                <span class="text-success fw-bold">FREE</span>
+              </div>
+            </div>
+
+            <div class="grand-total-box">
+              <span class="small opacity-75 d-block">Grand Total</span>
+              <h3 class="mb-0 fw-bold" id="finalAmountText" th:text="'₹' + ${grandTotal}">₹0.00</h3>
+            </div>
+
+            <button type="submit" class="btn-place-order mt-4 shadow-sm">
+              Place Your Order <i class="fas fa-check-circle ms-2"></i>
+            </button>
+            <p class="text-center mt-3 small text-muted">
+              <i class="fas fa-shield-alt text-success"></i> 100% Secure Transaction
+            </p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </form>
+</div>
+
+<div th:replace="~{fragments/footer :: footer}"></div>
+
+<script th:inline="javascript">
+  // 1. UPI Logic
+  const upiId = "nikunjc795@oksbi";
+  const grandTotal = [[${grandTotal}]];
+
+  function togglePaymentSections() {
+    const method = document.getElementById('paymentMethod').value;
+    document.getElementById('cardDetailsSection').style.display = (method === 'credit card') ? 'block' : 'none';
+  }
+
+  function openUPIModal() {
+    const upiUrl = `upi://pay?pa=${upiId}&pn=KrushiVikash&am=${grandTotal}&cu=INR`;
+    document.getElementById("qrcode").innerHTML = "";
+    new QRCode(document.getElementById("qrcode"), {
+        text: upiUrl,
+        width: 200,
+        height: 200
+    });
+    document.getElementById('upiModal').style.display = 'block';
+  }
+
+  function closeUPIModal() {
+    document.getElementById('upiModal').style.display = 'none';
+  }
+
+  // IMPROVED: Strict UTR Validation
+ function confirmUPIPayment() {
+    const utrInput = document.getElementById('utrField');
+    const utrError = document.getElementById('utrError');
+    const hiddenField = document.getElementById('hiddenTransactionId');
+    const utrValue = utrInput.value.trim();
+
+    if (/^\d{12}$/.test(utrValue)) {
+        // SUCCESS: Copy modal value to the hidden form field
+        hiddenField.value = utrValue;
+
+        // Disable button to prevent double click
+        event.target.innerHTML = "Processing...";
+        event.target.disabled = true;
+
+        document.getElementById('checkoutForm').submit();
+    } else {
+        // FAIL: Keep modal open and show error
+        utrError.style.display = 'block';
+        utrInput.style.borderColor = 'red';
+        utrInput.focus();
+    }
+}
+
+window.onload = function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('error') && urlParams.get('error') === 'invalid_utr') {
+        // If the server sent us back here with a UTR error, reopen the scanner
+        openUPIModal();
+        document.getElementById('utrError').style.display = 'block';
+        document.getElementById('utrField').classList.add('input-error');
+    }
+}
+
+  // Clear error while typing
+  document.getElementById('utrField').addEventListener('input', function() {
+      this.style.borderColor = '#eee';
+      document.getElementById('utrError').style.display = 'none';
+  });
+
+  // 2. Validation & Submit Logic
+  function showTopError(fieldId, message, isError) {
+      const errorSpan = document.getElementById('err-' + fieldId);
+      const input = document.getElementById(fieldId);
+      if (errorSpan) {
+          errorSpan.innerText = message;
+          errorSpan.style.display = isError ? 'block' : 'none';
+      }
+      if (input) {
+          isError ? input.classList.add('input-error') : input.classList.remove('input-error');
+      }
+  }
+
+  document.getElementById('checkoutForm').addEventListener('submit', function (event) {
+    event.preventDefault();
+    let isValid = true;
+    const method = document.getElementById('paymentMethod').value;
+
+    const nameVal = document.getElementById('name').value;
+    if (nameVal.length < 3) { showTopError('name', 'Name too short', true); isValid = false; }
+
+    const phoneVal = document.getElementById('number').value;
+    if (!/^[6-9]\d{9}$/.test(phoneVal)) { showTopError('number', 'Invalid number', true); isValid = false; }
+
+    const addressVal = document.getElementById('address').value;
+    if (addressVal.length < 10) { showTopError('address', 'Enter full address', true); isValid = false; }
+
+    if (method === 'credit card') {
+        const cardNum = document.getElementById('cardNumberInput').value;
+        if (cardNum.length < 19) { showTopError('cardNumber', '16 digits required', true); isValid = false; }
+    }
+
+    if (isValid) {
+        if (method === 'upi') {
+            openUPIModal();
+        } else {
+            this.submit();
+        }
+    }
+  });
+
+  // 3. Formatter for Card
+  document.getElementById('cardNumberInput').addEventListener('input', e => {
+    let val = e.target.value.replace(/\D/g, '');
+    let icon = document.getElementById('cardTypeIcon');
+    e.target.value = val.match(/.{1,4}/g)?.join('-').substring(0, 19) || "";
+    if (val.length > 0) {
+        icon.style.display = "inline-block";
+        icon.className = "fab me-2 ";
+        if (val.startsWith('4')) icon.classList.add('fa-cc-visa', 'text-primary');
+        else if (val.startsWith('5')) icon.classList.add('fa-cc-mastercard', 'text-danger');
+        else icon.classList.add('fa-credit-card', 'text-success');
+    } else { icon.style.display = "none"; }
+  });
+
+  document.getElementById('expDateInput').addEventListener('input', e => {
+    let v = e.target.value.replace(/\D/g, '');
+    if (v.length >= 2) e.target.value = (v.substring(0,2) + '/' + v.substring(2,4)).substring(0, 5);
+  });
+
+  document.getElementById('cvvInput').addEventListener('input', e => {
+    e.target.value = e.target.value.replace(/\D/g, '').substring(0, 3);
+  });
+</script>
+
+</body>
+</html>

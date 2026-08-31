@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<div th:fragment="profile-table">
+  <div class="card shadow border-0">
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+      <h4 class="m-0"><i class="fas fa-user-circle me-2"></i>My Profile</h4>
+      <button class="btn btn-light btn-sm fw-bold shadow-sm" onclick="loadContent('/farmer/edit-profile-fragment')">
+        <i class="fas fa-edit me-1"></i> Edit Profile
+      </button>
+    </div>
+    <div class="card-body row align-items-center">
+      <div class="col-md-4 text-center border-end">
+        <img th:src="${farmer.image != null && !#strings.isEmpty(farmer.image)} ? '/uploads/' + ${farmer.image} : @{/images/pic-1.png}"
+             class="rounded-circle img-thumbnail shadow-sm"
+             style="width:160px; height:160px; object-fit: cover;"
+             onerror="this.src='/images/pic-1.png';">
+        <h5 class="mt-3 text-primary" th:text="${farmer.name}">Farmer Name</h5>
+      </div>
+      <div class="col-md-8">
+        <table class="table table-hover border-0">
+          <tr>
+            <th class="text-muted" width="30%">Full Name</th>
+            <td class="fw-bold" th:text="${farmer.name}"></td>
+          </tr>
+          <tr>
+            <th class="text-muted">Email Address</th>
+            <td th:text="${farmer.email}"></td>
+          </tr>
+          <tr>
+            <th class="text-muted">Phone / Contact</th>
+            <td th:text="${farmer.contact}"></td>
+          </tr>
+          <tr>
+            <th class="text-muted">Gender</th>
+            <td th:text="${#strings.capitalize(farmer.gender != null ? farmer.gender : 'Not Specified')}"></td>
+          </tr>
+          <tr>
+            <th class="text-muted">Account Type</th>
+            <td><span class="badge bg-info text-dark">Farmer</span></td>
+          </tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div th:fragment="profile-form">
+  <div class="card shadow border-0">
+    <div class="card-header bg-success text-white">
+      <h4 class="m-0"><i class="fas fa-user-edit me-2"></i>Update Your Details</h4>
+    </div>
+    <div class="card-body">
+      <form th:action="@{/farmer/update-profile}" method="POST" enctype="multipart/form-data" id="profileUpdateForm">
+
+        <div class="row">
+          <div class="col-md-4 text-center border-end">
+            <label class="form-label fw-bold">Profile Image</label>
+            <div class="mb-3 position-relative">
+              <img id="imagePreview"
+                   th:src="${farmer.image != null} ? @{'/uploads/' + ${farmer.image}} : @{/images/pic-1.png}"
+                   class="rounded-circle img-thumbnail shadow-sm"
+                   style="width:130px; height:130px; object-fit: cover;">
+            </div>
+            <input type="file" name="profileImage" id="imageInput" class="form-control form-control-sm" accept="image/*">
+            <small class="text-muted d-block mt-1">Click to upload new photo</small>
+          </div>
+
+          <div class="col-md-8">
+            <div class="mb-3">
+              <label class="form-label fw-bold">Full Name</label>
+              <input type="text" name="name" th:value="${farmer.name}" class="form-control" required>
+            </div>
+
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label fw-bold">Phone Number</label>
+                <input type="text" name="phone" th:value="${farmer.contact}" class="form-control" required>
+              </div>
+
+              <div class="col-md-6 mb-3">
+                <label class="form-label fw-bold">Gender</label>
+                <select name="gender" class="form-select" required>
+                  <option value="" disabled>Select Gender</option>
+                  <option value="male" th:selected="${farmer.gender == 'male'}">Male</option>
+                  <option value="female" th:selected="${farmer.gender == 'female'}">Female</option>
+                  <option value="other" th:selected="${farmer.gender == 'other'}">Other</option>
+                </select>
+              </div>
+            </div>
+
+            <hr>
+            <h6 class="text-danger fw-bold"><i class="fas fa-key me-1"></i> Security Update</h6>
+
+            <div class="mb-3">
+              <label class="form-label">New Password</label>
+              <div class="input-group">
+                <input type="password" name="newPassword" id="newPassword" class="form-control" placeholder="Leave blank to keep current">
+                <button class="btn btn-outline-secondary" type="button" id="togglePasswordBtn">
+                  <i class="fas fa-eye" id="eyeIcon"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-4 border-top pt-3 text-end">
+          <button type="button" class="btn btn-secondary me-2 px-4" onclick="loadContent('/farmer/profile-fragment')">
+            Cancel
+          </button>
+          <button type="submit" class="btn btn-success px-5">
+            <i class="fas fa-save me-2"></i>Save All Changes
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+        const toggleBtn = document.getElementById('togglePasswordBtn');
+        const passInput = document.getElementById('newPassword');
+        const eyeIcon = document.getElementById('eyeIcon');
+
+        if (toggleBtn) {
+            toggleBtn.onclick = function() {
+                const isPass = passInput.type === "password";
+                passInput.type = isPass ? "text" : "password";
+                eyeIcon.classList.replace(isPass ? 'fa-eye' : 'fa-eye-slash', isPass ? 'fa-eye-slash' : 'fa-eye');
+            };
+        }
+
+        const imageInput = document.getElementById('imageInput');
+        const imagePreview = document.getElementById('imagePreview');
+
+        if (imageInput) {
+            imageInput.onchange = function(evt) {
+                const [file] = imageInput.files;
+                if (file) {
+                    imagePreview.src = URL.createObjectURL(file);
+                }
+            };
+        }
+    })();
+  </script>
+</div>
+
+</body>
+</html>

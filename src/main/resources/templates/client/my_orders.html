@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Orders | KrushiVikash</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    body { background-color: #f8f9fa; font-family: 'Poppins', sans-serif; }
+    .history-container { padding: 50px 0; }
+
+    .section-title { font-weight: 700; color: #2c3e50; margin-bottom: 40px; }
+
+    .order-card {
+      background: #fff;
+      border-radius: 20px;
+      border: 1px solid #eee;
+      transition: all 0.3s ease;
+      margin-bottom: 25px;
+      overflow: hidden;
+    }
+
+    .order-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+      border-color: #27ae60;
+    }
+
+    .order-header {
+      background-color: #f8fff9;
+      padding: 20px 30px;
+      border-bottom: 1px solid #f1f1f1;
+    }
+
+    .order-body { padding: 25px 30px; }
+
+    .label-text { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: #95a5a6; font-weight: 600; }
+    .value-text { font-weight: 600; color: #2c3e50; margin-bottom: 0; }
+
+    .status-badge {
+      font-size: 0.8rem;
+      padding: 6px 16px;
+      border-radius: 50px;
+      font-weight: 600;
+    }
+
+    .btn-details {
+      border: 2px solid #27ae60;
+      color: #27ae60;
+      font-weight: 600;
+      border-radius: 10px;
+      padding: 8px 20px;
+      transition: 0.3s;
+      background: transparent;
+    }
+
+    .btn-details:hover {
+      background-color: #27ae60;
+      color: white;
+    }
+
+    .empty-state {
+        background: white;
+        padding: 60px;
+        border-radius: 30px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+    }
+
+    /* Modal Styling */
+    .modal-content { border-radius: 20px; border: none; }
+    .modal-header { border-bottom: 1px solid #f1f1f1; background: #f8fff9; border-radius: 20px 20px 0 0; }
+    .item-list-row { border-bottom: 1px solid #eee; padding: 15px 0; }
+    .item-list-row:last-child { border-bottom: none; }
+  </style>
+</head>
+<body>
+
+<div th:replace="~{fragments/client_header :: client_header}"></div>
+
+<div class="container history-container">
+  <h2 class="section-title text-center">My <span class="text-success">Order History</span></h2>
+
+  <div th:if="${#lists.isEmpty(orders)}" class="text-center empty-state">
+    <div class="mb-4">
+      <i class="fas fa-box-open fa-4x text-success opacity-25"></i>
+    </div>
+    <h3 class="fw-bold">No orders found!</h3>
+    <p class="text-muted">It looks like you haven't placed any farm-fresh orders yet.</p>
+    <a th:href="@{/client/shop}" class="btn btn-success px-5 py-3 rounded-pill fw-bold mt-3 shadow-sm">
+      Start Shopping Now
+    </a>
+  </div>
+
+  <div th:if="${not #lists.isEmpty(orders)}">
+    <div th:each="order : ${orders}" class="order-card shadow-sm">
+
+      <div class="order-header d-flex justify-content-between align-items-center">
+        <div>
+          <span class="label-text">Order Date</span>
+          <p class="value-text" th:text="${#temporals.format(order.orderDate, 'dd MMMM yyyy')}"></p>
+        </div>
+        <div class="text-end">
+          <span class="label-text">Payment Method</span>
+          <p class="value-text text-uppercase">
+            <span th:if="${order.paymentMethod == 'upi'}">UPI / Scanner</span>
+            <span th:if="${order.paymentMethod == 'cash on delivery'}">Cash On Delivery</span>
+            <span th:if="${order.paymentMethod == 'credit card'}">Card Payment</span>
+            <span th:if="${order.paymentMethod != 'upi' && order.paymentMethod != 'cash on delivery' && order.paymentMethod != 'credit card'}"
+                  th:text="${order.paymentMethod}"></span>
+          </p>
+        </div>
+      </div>
+
+      <div class="order-body">
+        <div class="row align-items-center">
+          <div class="col-md-3">
+            <span class="label-text">Transaction ID</span>
+            <p class="value-text" th:text="'#KV-' + ${order.id}"></p>
+          </div>
+
+          <div class="col-md-3">
+            <span class="label-text">Total Amount</span>
+            <p class="value-text text-success fs-5" th:text="'₹' + ${order.totalAmount}"></p>
+          </div>
+
+          <div class="col-md-3">
+            <span class="label-text">Status</span>
+            <div class="mt-1">
+                <span th:text="${order.status}"
+                      th:classappend="${order.status == 'PAID' ? 'bg-success' : 'bg-warning'}"
+                      class="status-badge text-white"></span>
+            </div>
+          </div>
+
+          <div class="col-md-3 text-md-end mt-3 mt-md-0">
+            <button class="btn btn-details" th:onclick="'showOrderDetails(' + ${order.id} + ')'">
+              <i class="fas fa-eye me-2"></i> View Details
+            </button>
+
+            <a th:href="@{'/client/order/invoice/' + ${order.id}}"
+               target="_blank"
+               class="btn btn-outline-success rounded-pill px-3">
+              <i class="fas fa-print me-1"></i> Invoice
+            </a>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="orderModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content shadow-lg">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold text-dark"><i class="fas fa-shopping-basket text-success me-2"></i> Order Items</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-4" id="modalContent">
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div th:replace="~{fragments/footer :: footer}"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  function showOrderDetails(orderId) {
+    const modalElement = document.getElementById('orderModal');
+    const orderModal = new bootstrap.Modal(modalElement);
+    const content = document.getElementById('modalContent');
+
+    content.innerHTML = `
+      <div class="text-center py-5">
+        <div class="spinner-border text-success" role="status"></div>
+        <p class="mt-2 text-muted">Loading farm-fresh items...</p>
+      </div>`;
+
+    orderModal.show();
+
+    // Use relative path to avoid 404
+    fetch('order-details/' + orderId)
+      .then(response => {
+        if (!response.ok) throw new Error('Server returned ' + response.status);
+        return response.json();
+      })
+      .then(items => {
+        console.log("Order Data:", items);
+
+        if (!items || items.length === 0) {
+          content.innerHTML = '<p class="text-center py-4">No items found for this order.</p>';
+          return;
+        }
+
+        let html = '<div class="list-group list-group-flush">';
+        items.forEach(item => {
+    // Check item.product first, then fallback
+    const name = (item.product && item.product.productName) ? item.product.productName : "Unknown Item";
+    const unit = (item.product && item.product.units) ? item.product.units : "unit";
+
+    // Ensure these match your OrderItem.java field names
+    const price = item.priceAtPurchase || 0;
+    const qty = item.quantity || 0;
+    const total = (price * qty).toFixed(2);
+
+          html += `
+            <div class="list-group-item d-flex justify-content-between align-items-center py-3 border-0 border-bottom">
+              <div class="d-flex align-items-center">
+                <div class="bg-light rounded-circle p-2 me-3 text-success">
+                  <i class="fas fa-leaf"></i>
+                </div>
+                <div>
+                  <h6 class="fw-bold mb-0 text-dark">${name}</h6>
+                  <small class="text-muted">${qty} ${unit} × ₹${price}</small>
+                </div>
+              </div>
+              <div class="text-end">
+                <span class="fw-bold text-success">₹${total}</span>
+              </div>
+            </div>`;
+        });
+        html += '</div>';
+        content.innerHTML = html;
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        content.innerHTML = `<div class="alert alert-danger m-3">Error loading details. Please try again.</div>`;
+      });
+  }
+</script>
+</body>
+</html>

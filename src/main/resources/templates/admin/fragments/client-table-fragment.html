@@ -1,0 +1,75 @@
+<div class="card shadow-sm border-0" xmlns:th="http://www.thymeleaf.org">
+    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+        <h5 class="mb-0 text-primary fw-bold">
+            <i class="fas fa-users me-2"></i>Customer Directory
+        </h5>
+
+    </div>
+
+
+
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                <tr>
+                    <th>ID</th>
+                    <th>Profile</th>
+                    <th>Name</th>
+                    <th>Gender</th> <th>Email</th>
+                    <th>Contact</th>
+                    <th>Address</th>
+                    <th>Status</th>
+                    <th class="text-center">Actions</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="client : ${clients}" th:if="${client != null}">
+                    <td th:text="${client.id}"></td>
+                    <td>
+                        <img th:src="${client.image != null && !client.image.isEmpty()} ? @{'/uploads/' + ${client.image}} : @{/images/default.png}"
+                             class="rounded-circle border" style="width: 40px; height: 40px; object-fit: cover;"
+                             onerror="this.src='https://ui-avatars.com/api/?name=User&background=0d6efd&color=fff';">
+                    </td>
+                    <td class="fw-bold" th:text="${client.name}"></td>
+
+                    <td th:text="${#strings.capitalize(client.gender != null ? client.gender : 'N/A')}"></td>
+
+                    <td class="text-primary" th:text="${client.email != null ? client.email : 'No Email'}"></td>
+                    <td th:text="${client.contact}"></td>
+                    <td th:text="${client.address}"></td>
+                    <td>
+                        <span th:if="${client.verified}" class="badge bg-primary">Verified</span>
+                        <span th:unless="${client.verified}" class="badge bg-secondary">Standard</span>
+                    </td>
+                    <td class="text-center">
+                        <div class="btn-group shadow-sm">
+                            <button class="btn btn-sm btn-outline-warning"
+                                    th:onclick="'loadEditForm(\'client\', ' + ${client.id} + ')'">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger"
+                                    th:onclick="'confirmDelete(\'client\', ' + ${client.id} + ')'">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-info position-relative"
+                                    th:onclick="'viewContactMessages(' + ${client.id} + ')'">
+                                <i class="fas fa-envelope"></i>
+
+                                <span th:if="${client.unreadMessages > 0}"
+                                      class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+                                      style="font-size: 0.6rem;">
+        [[${client.unreadMessages}]]
+    </span>
+                            </button>
+
+                        </div>
+                    </td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(clients)}">
+                    <td colspan="9" class="text-center py-4 text-muted">No customers found.</td> </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

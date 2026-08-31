@@ -1,0 +1,182 @@
+<div class="card shadow-sm border-0" xmlns:th="http://www.thymeleaf.org">
+  <style>
+    /* Soft highlight for unverified rows */
+    .row-new-farmer {
+        background-color: rgba(40, 167, 69, 0.05) !important;
+        border-left: 4px solid #dc3545; /* Red indicator for attention */
+    }
+
+    /* Animation for the 'NEW' badge */
+    .pulse-badge {
+        animation: pulse-animation 2s infinite;
+    }
+
+    @keyframes pulse-animation {
+        0% { opacity: 1; }
+        50% { opacity: 0.4; }
+        100% { opacity: 1; }
+    }
+  </style>
+
+  <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+    <h5 class="mb-0 text-success fw-bold">
+      <i class="fas fa-tractor me-2"></i>Farmer Directory
+    </h5>
+    <span class="badge bg-light text-dark border" th:text="${#lists.size(farmers)} + ' Total Farmers'"></span>
+  </div>
+
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle">
+        <thead class="table-light">
+        <tr>
+          <th>ID</th>
+          <th>Profile</th>
+          <th>Name</th>
+          <th>Gender</th>
+          <th>Email</th>
+          <th>Contact</th>
+          <th>Status</th>
+          <th class="text-center">Actions</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="farmer : ${farmers}"
+            th:if="${farmer != null}"
+            th:classappend="${!farmer.verified} ? 'row-new-farmer' : ''">
+
+          <td th:text="${farmer.id}"></td>
+          <td>
+            <img th:src="${farmer.image != null && !farmer.image.isEmpty()} ? @{'/uploads/' + ${farmer.image}} : @{/images/default.png}"
+                 class="rounded-circle border" style="width: 40px; height: 40px; object-fit: cover;"
+                 onerror="this.src='https://ui-avatars.com/api/?name=User&background=28a745&color=fff';">
+          </td>
+          <td class="fw-bold">
+            <span th:text="${farmer.name}"></span>
+            <span th:if="${!farmer.verified}" class="badge bg-danger ms-1 pulse-badge" style="font-size: 0.65rem;">NEW</span>
+          </td>
+
+          <td th:text="${#strings.capitalize(farmer.gender != null ? farmer.gender : 'N/A')}"></td>
+
+          <td class="text-success">
+            <span th:text="${farmer.email != null ? farmer.email : 'No Email'}"></span>
+          </td>
+          <td th:text="${farmer.contact}"></td>
+          <td>
+            <span th:if="${farmer.verified}" class="badge bg-success shadow-sm">Verified</span>
+            <span th:unless="${farmer.verified}" class="badge bg-warning text-dark shadow-sm">Pending Approval</span>
+          </td>
+          <td class="text-center">
+            <div class="btn-group shadow-sm">
+              <button class="btn btn-sm btn-info text-white shadow-sm"
+                      th:data-id="${farmer.id}"
+                      th:data-name="${farmer.name}"
+                      onclick="viewFarmerOrders(this.getAttribute('data-id'), this.getAttribute('data-name'))"
+                      title="View Orders">
+                <i class="fas fa-shopping-bag me-1"></i>
+                <span style="font-size: 0.8rem;">Orders</span>
+              </button>
+
+              <a th:href="@{/admin/index(farmerId=${farmer.id})}"
+                 class="btn btn-sm d-flex align-items-center"
+                 th:classappend="${!farmer.verified} ? 'btn-primary' : 'btn-outline-secondary'">
+                <i class="fas fa-check-circle me-1"></i>
+                <span style="font-size: 0.8rem;">Verify Details</span>
+              </a>
+
+              <button class="btn btn-sm btn-outline-success"
+                      th:onclick="'loadEditForm(\'farmer\', ' + ${farmer.id} + ')'"
+                      title="Edit Farmer">
+                <i class="fas fa-edit"></i>
+              </button>
+
+              <button class="btn btn-sm btn-outline-danger"
+                      th:onclick="|confirmDelete('farmer', ${farmer.id})|"
+                      title="Delete Farmer">
+                <i class="fas fa-trash-alt"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+
+        <tr th:if="${#lists.isEmpty(farmers)}">
+          <td colspan="8" class="text-center py-5 text-muted">
+            <i class="fas fa-info-circle fa-2x mb-3 d-block"></i>
+            No farmers found in the directory.
+          </td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+
+<script type="text/javascript">
+  function confirmDelete(type, id) {
+      Swal.fire({
+          title: 'Are you sure?',
+          text: "This will permanently delete this " + type + " and all associated records!",
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#28a745',
+          cancelButtonColor: '#dc3545',
+          confirmButtonText: 'Yes, delete it!',
+          cancelButtonText: 'No, keep it',
+          reverseButtons: true,
+          showClass: {
+              popup: 'animate__animated animate__fadeInDown'
+          },
+          hideClass: {
+              popup: 'animate__animated animate__fadeOutUp'
+          }
+      }).then((result) => {
+          if (result.isConfirmed) {
+              deleteEntity(type, id);
+          }
+      });
+  }
+
+  function deleteEntity(type, id) {
+      const url = `/admin/${type}/delete/${id}`;
+
+      fetch(url, {
+          method: 'GET',
+          headers: { 'X-Requested-With': 'XMLHttpRequest' }
+      })
+      .then(response => {
+          if (response.ok) {
+              // SUCCESS MESSAGE
+              Swal.fire({
+                  title: 'Deleted!',
+                  text: 'The ' + type + ' has been removed successfully.',
+                  icon: 'success',
+                  timer: 1500,
+                  showConfirmButton: false,
+                  timerProgressBar: true,
+                  showClass: {
+                      popup: 'animate__animated animate__fadeInUp'
+                  }
+              });
+
+              // Wait for the animation to finish before reloading
+              setTimeout(() => {
+                  location.reload();
+              }, 1500);
+
+          } else {
+              throw new Error('Server error');
+          }
+      })
+      .catch(error => {
+          Swal.fire({
+              title: 'Error!',
+              text: 'Cannot delete: This record is linked to active orders or other data.',
+              icon: 'error',
+              confirmButtonColor: '#28a745'
+          });
+      });
+  }
+</script>

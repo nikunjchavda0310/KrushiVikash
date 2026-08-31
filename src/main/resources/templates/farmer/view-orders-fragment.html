@@ -1,0 +1,149 @@
+<div th:fragment="ordersList" xmlns:th="http://www.w3.org/1999/xhtml">
+  <div class="container-fluid p-4">
+    <h3 class="text-success fw-bold mb-4">
+      <i class="fas fa-shopping-basket me-2"></i>Manage Received Orders
+    </h3>
+
+    <div th:each="order : ${orders}" class="card shadow-sm border-0 mb-4" style="border-radius: 15px;">
+      <div class="card-body p-4">
+
+        <div th:with="myItems=${order.orderItems.?[product.farmer.id == #vars.loggedInFarmerId]},
+                      isAllMyItemsPaid=${!#lists.toList(myItems.![status]).contains('PENDING')}">
+
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+              <small class="text-muted text-uppercase fw-bold">Placed On</small>
+              <h6 class="fw-bold" th:text="${#temporals.format(order.orderDate, 'dd-MMM-yyyy')}"></h6>
+            </div>
+
+            <span th:class="${isAllMyItemsPaid ? 'badge bg-success text-white p-2' : 'badge bg-warning text-dark p-2'}"
+                  style="border-radius: 20px; font-size: 0.75rem;"
+                  th:text="${isAllMyItemsPaid ? 'YOU VERIFIED THIS' : 'AWAITING YOUR CHECK'}">
+            </span>
+          </div>
+
+          <div class="row">
+            <div class="col-md-3">
+              <small class="text-muted text-uppercase fw-bold" style="font-size: 0.7rem;">Customer Details</small>
+              <p class="mb-0 fw-bold" th:text="${order.shippingName}"></p>
+              <p class="mb-0 small text-muted">
+                <i class="fas fa-phone-alt me-1" style="font-size: 0.7rem;"></i>
+                <span th:text="${order.shippingPhone}"></span>
+              </p>
+              <p class="mb-0 small text-muted text-truncate">
+                <i class="fas fa-envelope me-1" style="font-size: 0.7rem;"></i>
+                <span th:text="${order.shippingEmail}"></span>
+              </p>
+            </div>
+
+            <div class="col-md-3">
+              <small class="text-muted text-uppercase fw-bold" style="font-size: 0.7rem;">Shipping Address</small>
+              <p class="mb-0 small text-muted" th:text="${order.shippingAddress}"></p>
+            </div>
+
+            <div class="col-md-3">
+              <small class="text-muted text-uppercase fw-bold" style="font-size: 0.7rem;">Payment Method</small>
+              <p class="mb-0 fw-bold text-primary">
+                <i th:class="${order.paymentMethod == 'COD' ? 'fas fa-hand-holding-usd' : 'fas fa-credit-card'}"></i>
+                <span th:text="${order.paymentMethod}"></span>
+              </p>
+              <small th:if="${order.transactionId != null}" class="text-muted" style="font-size: 0.75rem;">
+                UTR: <span th:text="${order.transactionId}"></span>
+              </small>
+            </div>
+
+            <div class="col-md-3 text-end">
+              <small class="text-muted text-uppercase fw-bold" style="font-size: 0.7rem;">Your Earning</small>
+              <h4 class="text-success fw-bold">
+                ₹<span th:with="myTotal=${#aggregates.sum(myItems.![priceAtPurchase * quantity])}"
+                       th:text="${myTotal != null ? myTotal : '0.0'}">0.0</span>
+              </h4>
+            </div>
+          </div>
+
+          <hr class="my-3 opacity-25">
+
+          <div class="d-flex justify-content-end gap-2">
+            <button class="btn btn-outline-success px-4"
+                    th:onclick="'showOrderDetails(' + ${order.id} + ')'"
+                    style="border-radius: 8px;">
+              <i class="fas fa-list me-2"></i>View Details
+            </button>
+
+            <button th:if="${!isAllMyItemsPaid}"
+                    class="btn btn-success px-4"
+                    th:onclick="'handleOrderVerify(' + ${order.id} + ')'"
+                    style="border-radius: 8px;">
+              <i class="fas fa-check-double me-2"></i>Verify My Items
+            </button>
+
+            <a th:href="@{'/farmer/print-invoice/' + ${order.id}}"
+               target="_blank"
+               class="btn btn-outline-secondary"
+               style="border-radius: 8px;">
+              <i class="fas fa-print me-2"></i>Invoice
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div th:if="${#lists.isEmpty(orders)}" class="text-center py-5">
+      <i class="fas fa-box-open fa-3x text-muted mb-3"></i>
+      <p class="text-muted">No orders received yet.</p>
+    </div>
+  </div>
+
+  <div class="modal fade" id="orderDetailsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content" style="border-radius: 15px; border: none;">
+        <div class="modal-header border-0 pb-0">
+          <h5 class="modal-title fw-bold text-success">Order Items</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="modalBody"></div>
+      </div>
+    </div>
+  </div>
+
+  <script th:inline="javascript">
+    function showOrderDetails(orderId) {
+        const modalBody = document.getElementById('modalBody');
+        const bsModal = new bootstrap.Modal(document.getElementById('orderDetailsModal'));
+        modalBody.innerHTML = '<div class="text-center p-3"><div class="spinner-border text-success"></div></div>';
+        bsModal.show();
+
+        fetch('/farmer/order-details/' + orderId)
+            .then(res => res.text())
+            .then(html => { modalBody.innerHTML = html; })
+            .catch(err => { modalBody.innerHTML = '<p class="text-danger p-3">Error loading details.</p>'; });
+    }
+
+    function handleOrderVerify(orderId) {
+        Swal.fire({
+            title: 'Verify Your Items?',
+            text: "Mark your products in this order as paid?",
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#28a745',
+            confirmButtonText: 'Yes, Verify!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                fetch('/farmer/update-order-status/' + orderId, {
+                    method: 'POST',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                })
+                .then(res => res.text())
+                .then(data => {
+                    if(data === 'success') {
+                        Swal.fire('Success', 'Items verified!', 'success');
+                        loadContent('/farmer/view-orders-fragment', document.querySelector('.nav-link.active'));
+                    } else {
+                        Swal.fire('Error', 'Update failed.', 'error');
+                    }
+                });
+            }
+        });
+    }
+  </script>
+</div>

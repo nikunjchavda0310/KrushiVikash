@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+
+<body>
+<div th:fragment="verify-form">
+  <style>
+    .is-invalid {
+      border-color: #dc3545 !important;
+    }
+
+    .invalid-feedback {
+      display: none;
+      color: #dc3545;
+      font-size: 0.85rem;
+      margin-top: 0.25rem;
+      font-weight: 600;
+    }
+
+    .is-invalid~.invalid-feedback {
+      display: block;
+    }
+
+    .step-badge {
+      transition: all 0.3s ease;
+      opacity: 0.4;
+      font-size: 0.9rem;
+      letter-spacing: 1px;
+    }
+
+    .step-active {
+      opacity: 1 !important;
+      transform: scale(1.1);
+      font-weight: bold;
+      border: 2px solid white;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    }
+
+    .status-pending {
+      color: #dc3545 !important;
+      font-weight: 800;
+      font-size: 1.5rem;
+      text-transform: uppercase;
+    }
+
+    .status-box {
+      background: #fff5f5;
+      border: 2px dashed #f5c6cb !important;
+      border-radius: 15px;
+      padding: 50px;
+      margin-top: 30px;
+    }
+
+    .file-upload-wrapper {
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 10px;
+      padding: 20px;
+      transition: all 0.3s;
+    }
+
+    .file-upload-wrapper:hover {
+      border-color: #198754;
+      background: #f1f8f4;
+    }
+  </style>
+
+  <div class="container mb-5" id="verify-wrapper">
+    <div th:if="${verification != null}" class="status-container text-center">
+      <div class="status-box shadow-sm mx-auto" style="max-width: 700px;">
+        <div class="mb-4">
+          <i class="fas fa-file-invoice fa-5x text-success"></i>
+        </div>
+        <h2 class="fw-bold">Application Under Review</h2>
+        <p class="text-muted fs-5">Documents received. Our regional office is currently verifying your survey numbers.</p>
+        <hr class="my-4">
+        <p class="mb-1 fw-bold text-secondary small text-uppercase">Current Status:</p>
+        <span class="status-pending"><i class="fas fa-history me-2"></i> PENDING</span>
+
+        <p class="mb-0 text-muted">Submitted on:</p>
+        <strong th:text="${#temporals.format(verification.submissionDate, 'dd MMMM yyyy, hh:mm a')}"></strong>
+      </div>
+
+      <div class="mt-5">
+        <button class="btn btn-outline-success px-4" onclick="location.reload()">Refresh Status</button>
+      </div>
+    </div>
+  </div>
+
+  <div th:if="${verification == null}" class="card shadow-lg border-0" style="border-radius: 15px; overflow: hidden;">
+    <div class="card-header bg-success text-white text-center py-4">
+      <h3 class="m-0 fw-bold"><i class="fas fa-seedling me-2"></i> Farmer Land Verification</h3>
+      <p class="m-0 opacity-75 small">Verify your land details to access KrushiVikash benefits</p>
+    </div>
+
+    <div class="card-body p-4 p-md-5">
+      <div id="step-indicator" class="d-flex justify-content-center mb-5">
+        <div id="badge1" class="badge rounded-pill bg-success px-4 py-3 me-2 step-badge step-active">1. Basic Info</div>
+        <div id="badge2" class="badge rounded-pill bg-secondary px-4 py-3 step-badge">2. Land Documents</div>
+      </div>
+
+      <form id="verifyForm" novalidate enctype="multipart/form-data">
+        <div id="page1">
+          <h5 class="mb-4 text-success fw-bold"><i class="fas fa-map-marker-alt me-2"></i> Address & Identity</h5>
+          <div class="row g-4">
+            <div class="col-md-12">
+              <label class="form-label fw-bold">Full Name (As per Aadhaar)</label>
+              <input type="text" name="fullName" class="form-control form-control-lg" th:value="${farmer.name}" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-bold">State*</label>
+              <select id="stateSelect" name="state" class="form-select form-control-lg" required onchange="loadDistricts()">
+                <option value="">-- Select State --</option>
+                <option th:each="s : ${states}" th:value="${s.id}" th:text="${s.name}"></option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-bold">District*</label>
+              <select id="districtSelect" name="district" class="form-select form-control-lg" required onchange="loadTalukas()">
+                <option value="">-- Select District --</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-bold">Taluka / Tehsil*</label>
+              <select id="talukaSelect" name="taluka" class="form-select form-control-lg" required>
+                <option value="">-- Select Taluka --</option>
+              </select>
+            </div>
+            <div class="col-md-8">
+              <label class="form-label fw-bold">Village Name</label>
+              <input type="text" name="village" class="form-control form-control-lg" required placeholder="Enter your village">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-bold">Pin Code</label>
+              <input type="text" name="pincode" class="form-control form-control-lg" required pattern="^[1-9][0-9]{5}$" placeholder="000000">
+            </div>
+          </div>
+        </div>
+
+        <div id="page2" style="display: none;">
+          <h5 class="mb-4 text-primary fw-bold"><i class="fas fa-file-alt me-2"></i> Land Registration Details</h5>
+          <div class="row g-4">
+            <div class="col-md-6">
+              <label class="form-label fw-bold">7/12 Survey Number (Khata No)</label>
+              <input type="text" id="regNumber" name="regNumber" class="form-control form-control-lg" required>
+
+              <div id="duplicateRegError" class="text-danger small fw-bold mt-1" style="display: none;">
+                <i class="fas fa-exclamation-circle me-1"></i>
+                <span>This Survey Number Is Already Registered</span>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-bold">Total Farm Area (Vighas)</label>
+              <input type="number" name="farmArea" class="form-control form-control-lg" step="0.01" min="0.01" required>
+
+              <div class="invalid-feedback">
+                <i class="fas fa-exclamation-circle me-1"></i>
+                Please enter a valid farm area (greater than 0).
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="file-upload-wrapper">
+                <label class="fw-bold small d-block mb-2 text-success">Upload 7/12 Extract (Images only)</label>
+                <input type="file" name="satBaraFile" class="form-control file-input" accept="image/png, image/jpeg, image/jpg" required>
+              </div>
+            </div>
+
+            <div class="col-md-6">
+              <div class="file-upload-wrapper">
+                <label class="fw-bold small d-block mb-2 text-primary">Upload Aadhaar Copy (Images only)</label>
+                <input type="file" name="aadhaarFile" class="form-control file-input" accept="image/png, image/jpeg, image/jpg" required>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-5 d-flex justify-content-between pt-4 border-top" id="button-nav-area">
+          <button type="button" id="prevBtn" class="btn btn-outline-secondary btn-lg px-5" style="display:none;" onclick="navigate(1)">
+            <i class="fas fa-chevron-left me-2"></i> Back
+          </button>
+          <button type="button" id="nextBtn" class="btn btn-primary btn-lg px-5 ms-auto" onclick="validateStep1()">
+            Next Step <i class="fas fa-chevron-right ms-2"></i>
+          </button>
+          <button type="button" id="submitBtn" class="btn btn-success btn-lg px-5 ms-auto" style="display:none;" onclick="submitFinalForm()">
+            Submit Verification <i class="fas fa-check-circle ms-2"></i>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script th:inline="javascript">
+    (function() {
+      // Helper to get CSRF tokens
+      const getSecurityHeaders = () => ({
+        token: document.querySelector('meta[name="_csrf"]')?.content,
+        header: document.querySelector('meta[name="_csrf_header"]')?.content
+      });
+
+      // 1. DROPDOWNS
+      window.loadDistricts = function() {
+        const stateId = document.getElementById('stateSelect').value;
+        const distSelect = document.getElementById('districtSelect');
+        const talSelect = document.getElementById('talukaSelect');
+        const { token, header } = getSecurityHeaders();
+
+        distSelect.innerHTML = '<option value="">-- Select District --</option>';
+        talSelect.innerHTML = '<option value="">-- Select Taluka --</option>';
+        if (!stateId) return;
+
+        fetch(`/api/locations/districts/${stateId}`, {
+            headers: { [header]: token }
+          })
+          .then(r => r.json())
+          .then(data => {
+            data.forEach(d => distSelect.add(new Option(d.name, d.id)));
+          })
+          .catch(err => console.error("District Load Error:", err));
+      };
+
+      window.loadTalukas = function() {
+        const distId = document.getElementById('districtSelect').value;
+        const talSelect = document.getElementById('talukaSelect');
+        const { token, header } = getSecurityHeaders();
+
+        talSelect.innerHTML = '<option value="">-- Select Taluka --</option>';
+        if (!distId) return;
+
+        fetch(`/api/locations/talukas/${distId}`, {
+            headers: { [header]: token }
+          })
+          .then(r => r.json())
+          .then(data => {
+            data.forEach(t => talSelect.add(new Option(t.name, t.id)));
+          })
+          .catch(err => console.error("Taluka Load Error:", err));
+      };
+
+      // 2. NAVIGATION
+      window.navigate = function(step) {
+        const p1 = document.getElementById('page1'),
+          p2 = document.getElementById('page2');
+        const nBtn = document.getElementById('nextBtn'),
+          sBtn = document.getElementById('submitBtn'),
+          bBtn = document.getElementById('prevBtn');
+        const b1 = document.getElementById('badge1'),
+          b2 = document.getElementById('badge2');
+
+        if (step === 1) {
+          p1.style.display = 'block';
+          p2.style.display = 'none';
+          bBtn.style.display = 'none';
+          nBtn.style.display = 'block';
+          sBtn.style.display = 'none';
+          b1.className = "badge rounded-pill bg-success px-4 py-3 me-2 step-badge step-active";
+          b2.className = "badge rounded-pill bg-secondary px-4 py-3 step-badge";
+        } else if (step === 2) {
+          p1.style.display = 'none';
+          p2.style.display = 'block';
+          bBtn.style.display = 'block';
+          nBtn.style.display = 'none';
+          sBtn.style.display = 'block';
+          b1.className = "badge rounded-pill bg-secondary px-4 py-3 me-2 step-badge";
+          b2.className = "badge rounded-pill bg-success px-4 py-3 step-badge step-active";
+        }
+      };
+
+      window.validateStep1 = function() {
+        const inputs = document.querySelectorAll('#page1 input, #page1 select');
+        let isValid = true;
+        inputs.forEach(i => {
+          if (!i.checkValidity()) {
+            i.classList.add('is-invalid');
+            isValid = false;
+          } else i.classList.remove('is-invalid');
+        });
+        if (isValid) navigate(2);
+        else Swal.fire('Wait!', 'Please fill all address details.', 'warning');
+      };
+
+      // 3. SUBMISSION LOGIC
+     window.submitFinalForm = function() {
+      const form = document.getElementById('verifyForm');
+      const page2Inputs = document.querySelectorAll('#page2 input');
+      let isValid = true;
+
+      // --- NEW FILE TYPE VALIDATION ---
+    const allowedExtensions = /(\.jpg|\.jpeg|\.png)$/i;
+    const fileInputs = form.querySelectorAll('input[type="file"]');
+
+    for (let input of fileInputs) {
+        const file = input.files[0];
+        if (file && !allowedExtensions.exec(file.name)) {
+            Swal.fire('Invalid File', `File "${file.name}" is not an image. Please upload JPG or PNG.`, 'error');
+            return; // Stop execution immediately
+        }
+    }
+
+      page2Inputs.forEach(i => {
+        if (!i.checkValidity()) {
+          i.classList.add('is-invalid');
+          isValid = false;
+        } else i.classList.remove('is-invalid');
+      });
+
+      if (!isValid) {
+        Swal.fire('Error', 'Please upload required files and fill land details.', 'warning');
+        return;
+      }
+
+      Swal.fire({
+        title: 'Processing...',
+        text: 'Saving your details',
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading()
+      });
+
+      const formData = new FormData();
+      const jsonData = {
+        fullName: form.querySelector('[name="fullName"]').value,
+        state: form.querySelector('[name="state"]').value,
+        district: form.querySelector('[name="district"]').value,
+        taluka: form.querySelector('[name="taluka"]').value,
+        village: form.querySelector('[name="village"]').value,
+        pincode: form.querySelector('[name="pincode"]').value,
+        regNumber: form.querySelector('[name="regNumber"]').value,
+        farmArea: form.querySelector('[name="farmArea"]').value
+      };
+
+      formData.append("data", JSON.stringify(jsonData));
+      const satBaraInput = form.querySelector('[name="satBaraFile"]');
+      const aadhaarInput = form.querySelector('[name="aadhaarFile"]');
+
+      if (satBaraInput.files[0]) formData.append("satBaraFile", satBaraInput.files[0]);
+      if (aadhaarInput.files[0]) formData.append("aadhaarFile", aadhaarInput.files[0]);
+
+      const { token, header } = getSecurityHeaders();
+
+      fetch('/farmer/submit-verification', {
+          method: 'POST',
+          body: formData,
+          headers: { [header]: token }
+        })
+        .then(res => res.text())
+        .then(data => {
+          Swal.close();
+
+          // DUPLICATE ERROR HANDLING
+          if (data === "This Survey Number Is Already Registered") {
+            const regInput = document.getElementById('regNumber');
+            const errorDiv = document.getElementById('duplicateRegError');
+
+            if (regInput) regInput.classList.add('is-invalid');
+            if (errorDiv) errorDiv.style.display = 'block';
+            if (regInput) regInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+            Swal.fire({
+              icon: 'error',
+              title: 'Duplicate Record',
+              text: data,
+              confirmButtonColor: '#dc3545'
+            });
+            return;
+          }
+
+          if (data === "success") {
+            Swal.fire({
+              icon: 'success',
+              title: 'Verification Submitted!',
+              text: 'Your land details have been uploaded successfully for review.',
+              confirmButtonColor: '#198754'
+            }).then(() => location.reload());
+          } else {
+            Swal.fire('Error', data, 'error');
+          }
+        })
+        .catch((err) => {
+          Swal.close();
+          console.error(err);
+          Swal.fire('Error', 'Failed to connect to server.', 'error');
+        });
+    };
+
+    // 4. RESET DUPLICATE ERROR ON INPUT (Your Requested Code)
+    // We add this inside the IIFE after the functions are defined
+    const regNumElement = document.getElementById('regNumber');
+    if(regNumElement) {
+        regNumElement.addEventListener('input', function() {
+            this.classList.remove('is-invalid');
+            const err = document.getElementById('duplicateRegError');
+            if(err) err.style.display = 'none';
+        });
+    }
+
+  })();
+  </script>
+</div>
+</body>
+
+</html>

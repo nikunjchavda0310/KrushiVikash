@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Global Search | KrushiVikash</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { background-color: #f8f9fa; font-family: 'Poppins', sans-serif; }
+    .search-section { padding: 60px 0; background: linear-gradient(135deg, #fdfdfd 0%, #f1f8f4 100%); border-bottom: 1px solid #eef2f0; }
+    .search-input-group { max-width: 700px; margin: 0 auto; position: relative; }
+    .search-input-group .form-control { border-radius: 50px; padding: 18px 30px; padding-right: 120px; font-size: 1.1rem; border: 2px solid #eee; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+    .search-btn-inside { position: absolute; right: 8px; top: 8px; bottom: 8px; border-radius: 40px; padding: 0 30px; background: #27ae60; color: white; border: none; font-weight: 600; }
+    .product-card { background: #fff; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 20px rgba(0,0,0,0.05); transition: 0.3s; height: 100%; position: relative; }
+    .price-tag { position: absolute; top: 15px; left: 15px; background: #27ae60; color: white; padding: 4px 12px; border-radius: 30px; font-weight: 700; z-index: 10; }
+    .eye-icon { position: absolute; top: 15px; right: 15px; background: white; color: #27ae60; width: 35px; height: 35px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 8px rgba(0,0,0,0.1); z-index: 10; }
+    .product-img { height: 200px; object-fit: contain; padding: 20px; width: 100%; }
+    .category-badge { font-size: 0.7rem; background: #eafaf1; color: #27ae60; padding: 3px 10px; border-radius: 5px; display: inline-block; margin-bottom: 5px; font-weight: 600; }
+
+    .qty-input {
+      width: 70px;
+      border-radius: 8px;
+      border: 1px solid #eee;
+      text-align: center;
+      font-weight: 600;
+    }
+
+    .btn-wishlist {
+      background: #fdf2f2;
+      color: #e74c3c;
+      border: 1px solid #fee2e2;
+      border-radius: 12px;
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: 0.3s;
+    }
+
+    .btn-wishlist.is-active {
+        background: #fff5f5 !important;
+        color: #e74c3c !important;
+        border-color: #fab1a0 !important;
+    }
+
+    .btn-wishlist:active { transform: scale(0.9); }
+
+    .btn-wishlist.is-active i {
+        animation: pulseHeart 0.4s linear;
+    }
+
+    @keyframes pulseHeart {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.4); }
+        100% { transform: scale(1.1); }
+    }
+  </style>
+</head>
+<body>
+
+<div th:replace="~{fragments/client_header :: client_header}"></div>
+
+<section class="search-section">
+  <div class="container text-center">
+    <h2 class="fw-bold mb-4">Smart <span class="text-success">Search</span></h2>
+    <form th:action="@{/client/search}" method="GET" class="search-input-group">
+      <input type="text" class="form-control" name="keywords" th:value="${keywords}"
+             placeholder="Search by name, price, category or details..." required>
+      <button type="submit" class="search-btn-inside shadow-sm">
+        <i class="fas fa-search me-2"></i> Search
+      </button>
+    </form>
+    <p class="mt-3 text-muted" th:if="${keywords != null}">
+      Found <span class="fw-bold text-dark" th:text="${#lists.size(productList)}">0</span> items for "<span th:text="${keywords}"></span>"
+    </p>
+  </div>
+</section>
+
+<section class="container py-5">
+  <div th:if="${#lists.isEmpty(productList)}" class="text-center py-5">
+    <h3 class="text-muted">No matches found for your criteria.</h3>
+    <a th:href="@{/client/shop}" class="btn btn-success mt-3 rounded-pill px-4">See All Products</a>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-6 col-md-4 col-lg-3" th:each="product : ${productList}" th:if="${product.active}">
+      <div class="product-card">
+        <div class="price-tag">₹<span th:text="${product.price}">0</span></div>
+        <a th:href="@{/client/product/view(id=${product.id})}" class="eye-icon"><i class="fas fa-eye"></i></a>
+
+        <img th:with="imageList=${#strings.arraySplit(product.image, ',')}"
+             th:src="${product.image != null && product.image != ''} ? @{'/uploads/' + ${imageList[0]}} : @{/images/default.png}"
+             class="product-img" onerror="this.src='/images/cat-3.png';">
+
+        <div class="p-4 pt-0 text-center">
+          <div class="category-badge" th:text="${product.category.name}">Category</div>
+          <h6 class="fw-bold mb-1 text-dark text-truncate" th:text="${product.productName}">Name</h6>
+          <p class="small text-muted mb-2" th:text="'Per ' + ${product.units}">Unit</p>
+
+          <!-- CART FORM WITH QUANTITY -->
+          <form th:action="@{/cart/add}" method="POST">
+            <input type="hidden" name="pid" th:value="${product.id}">
+
+            <div class="d-flex align-items-center justify-content-center mb-3">
+              <span class="small text-muted me-2">Qty:</span>
+              <input type="number" name="p_qty" min="1" th:max="${product.stock}" value="1"
+                     class="form-control form-control-sm qty-input">
+            </div>
+
+            <div class="d-flex gap-2">
+              <button type="submit" class="btn btn-success flex-grow-1" th:disabled="${product.stock == 0}">
+                <i class="fas fa-shopping-cart me-1"></i>
+                <span th:text="${product.stock > 0 ? 'Add' : 'Out of Stock'}">Add</span>
+              </button>
+
+              <!-- WISHLIST BUTTON (Placed next to add for clean layout) -->
+              <button type="submit" th:formaction="@{/client/wishlist/add}" class="btn-wishlist"
+                      th:classappend="${wishlistedIds != null and #lists.contains(wishlistedIds, product.id)} ? 'is-active' : ''">
+                <i th:class="${wishlistedIds != null and #lists.contains(wishlistedIds, product.id)} ? 'fas fa-heart text-danger' : 'far fa-heart'"></i>
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div th:replace="~{fragments/footer :: footer}"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script th:inline="javascript">
+  /*<![CDATA[*/
+  document.addEventListener('DOMContentLoaded', function() {
+      const Toast = Swal.mixin({
+          toast: true,
+          position: 'top-end',
+          showConfirmButton: false,
+          timer: 3000,
+          timerProgressBar: true,
+          didOpen: (toast) => {
+              toast.addEventListener('mouseenter', Swal.stopTimer)
+              toast.addEventListener('mouseleave', Swal.resumeTimer)
+          }
+      });
+
+      const flashMsg = [[${message}]];
+      const flashInfo = [[${info}]];
+      const flashErr = [[${error}]];
+
+      if (flashMsg) Toast.fire({ icon: 'success', title: flashMsg });
+      if (flashInfo) Toast.fire({ icon: 'info', title: flashInfo });
+      if (flashErr) Toast.fire({ icon: 'error', title: flashErr });
+  });
+  /*]]>*/
+</script>
+</body>
+</html>

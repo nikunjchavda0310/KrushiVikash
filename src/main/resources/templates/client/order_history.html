@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>My Orders | KrushiVikash</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
+    <style>
+        .order-card { border-radius: 15px; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.05); transition: 0.3s; margin-bottom: 20px; }
+        .order-card:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
+        .status-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 8px; }
+        .dot-pending { background-color: #ffcc00; box-shadow: 0 0 8px #ffcc00; }
+        .dot-verified { background-color: #27ae60; box-shadow: 0 0 8px #27ae60; }
+        .utr-box { background: #f8f9fa; padding: 5px 10px; border-radius: 5px; font-family: monospace; font-size: 0.9rem; }
+    </style>
+</head>
+<body class="bg-light">
+
+<div th:replace="~{fragments/client_header :: client_header}"></div>
+
+<div class="container py-5">
+    <h3 class="fw-bold mb-4"><i class="fas fa-shopping-bag text-success me-2"></i> My Order History</h3>
+
+    <div th:if="${#lists.isEmpty(orders)}" class="text-center py-5">
+        <i class="fas fa-box-open fa-4x text-muted mb-3"></i>
+        <p class="text-muted">You haven't placed any orders yet.</p>
+        <a href="/shop" class="btn btn-success">Start Shopping</a>
+    </div>
+
+    <div th:each="order : ${orders}" class="card order-card">
+        <div class="card-body">
+            <div class="row align-items-center">
+                <div class="col-md-2">
+                    <span class="text-muted small d-block">Order ID</span>
+                    <span class="fw-bold" th:text="'#' + ${order.id}">#101</span>
+                </div>
+                <div class="col-md-3">
+                    <span class="text-muted small d-block">Payment Method</span>
+                    <span class="fw-bold">
+                        <i class="fas fa-university text-primary me-1"></i>
+                        <span th:text="${#strings.toUpperCase(order.method)}">UPI</span>
+                    </span>
+                    <div th:if="${order.method == 'upi'}" class="mt-1">
+                        <span class="utr-box text-muted" th:text="${order.transactionId}">UTR: 1234...</span>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <span class="text-muted small d-block">Total Amount</span>
+                    <span class="fw-bold text-success" th:text="'₹' + ${order.totalAmount}">₹500</span>
+                </div>
+                <div class="col-md-3">
+                    <span class="text-muted small d-block">Payment Status</span>
+                    <div th:if="${order.status != 'Paid & Confirmed'}">
+                        <span class="status-dot dot-pending"></span>
+                        <span class="text-warning fw-bold">Awaiting Farmer Verification</span>
+                    </div>
+                    <div th:if="${order.status == 'Paid & Confirmed'}">
+                        <span class="status-dot dot-verified"></span>
+                        <span class="text-success fw-bold">Payment Verified</span>
+                    </div>
+                </div>
+                <div class="col-md-2 text-end">
+                    <a th:href="@{'/client/order-details/' + ${order.id}}" class="btn btn-outline-dark btn-sm rounded-pill">View Details</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Wishlist | KrushiVikash</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    body { background-color: #f9fbf9; font-family: 'Poppins', sans-serif; }
+    .wishlist-container { padding: 60px 0; min-height: 70vh; }
+    .section-title { font-weight: 700; color: #2c3e50; margin-bottom: 40px; }
+
+    .wishlist-card {
+      background: #fff;
+      border-radius: 20px;
+      padding: 20px;
+      border: none;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.04);
+      position: relative;
+      transition: 0.3s;
+      height: 100%;
+    }
+    .wishlist-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 15px 35px rgba(39, 174, 96, 0.1);
+    }
+
+    /* Style for hidden products */
+    .product-hidden {
+      opacity: 0.7;
+      filter: grayscale(0.5);
+    }
+    .offline-badge {
+      font-size: 0.7rem;
+      font-weight: 700;
+      background: #f8d7da;
+      color: #842029;
+      padding: 4px 10px;
+      border-radius: 50px;
+      display: inline-block;
+      margin-bottom: 10px;
+    }
+
+    .delete-item {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      color: #ddd;
+      transition: 0.3s;
+      z-index: 10;
+      font-size: 1.2rem;
+      border: none;
+      background: none;
+    }
+    .delete-item:hover { color: #e74c3c; transform: scale(1.2); }
+
+    .view-item {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      color: #ddd;
+      transition: 0.3s;
+      z-index: 10;
+      font-size: 1.1rem;
+    }
+    .view-item:hover { color: #27ae60; }
+
+    .img-wrapper {
+      height: 180px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 15px;
+    }
+    .img-wrapper img {
+      max-height: 100%;
+      max-width: 100%;
+      object-fit: contain;
+    }
+
+    .price-text { font-size: 1.25rem; font-weight: 700; color: #27ae60; }
+    .qty-box { border-radius: 10px; border: 1px solid #eee; max-width: 80px; text-align: center; }
+
+    .btn-add-to-cart {
+      background: #27ae60;
+      color: white;
+      border-radius: 12px;
+      font-weight: 600;
+      width: 100%;
+      padding: 10px;
+      border: none;
+      transition: 0.3s;
+    }
+    .btn-add-to-cart:hover:not(:disabled) {
+      background: #219150;
+      box-shadow: 0 8px 15px rgba(39, 174, 96, 0.2);
+    }
+    .btn-add-to-cart:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+    }
+
+    .wishlist-summary {
+      background: #fff;
+      border-radius: 20px;
+      padding: 30px;
+      margin-top: 50px;
+      box-shadow: 0 5px 20px rgba(0,0,0,0.03);
+    }
+
+    .empty-state i { color: #e0e0e0; margin-bottom: 20px; }
+  </style>
+</head>
+<body>
+
+<div th:replace="~{fragments/client_header :: client_header}"></div>
+
+<div class="container wishlist-container">
+  <h2 class="section-title text-center">My <span class="text-success">Wishlist</span></h2>
+
+  <div th:if="${#lists.isEmpty(wishlistItems)}" class="text-center py-5 empty-state">
+    <i class="fas fa-heart-broken fa-5x"></i>
+    <h3 class="text-muted">Your wishlist is empty</h3>
+    <p class="text-muted">Looks like you haven't added any organic favorites yet.</p>
+    <a th:href="@{/client/shop}" class="btn btn-success rounded-pill px-5 py-2 mt-3">Start Shopping</a>
+  </div>
+
+  <div class="row g-4" th:if="${not #lists.isEmpty(wishlistItems)}">
+    <div class="col-6 col-md-4 col-lg-3" th:each="item : ${wishlistItems}">
+      <div class="wishlist-card text-center" th:classappend="${!item.product.active} ? 'product-hidden' : ''">
+
+        <a href="javascript:void(0)"
+           class="delete-item delete-confirm-btn"
+           th:attr="data-id=${item.id}, data-name=${item.product.productName}">
+          <i class="fas fa-times-circle"></i>
+        </a>
+
+        <a th:href="@{/client/product/view(id=${item.product.id})}" class="view-item">
+          <i class="fas fa-eye"></i>
+        </a>
+
+        <div class="img-wrapper">
+          <img th:with="imageList=${#strings.arraySplit(item.product.image, ',')}"
+               th:src="${item.product.image != null && item.product.image != ''} ? @{'/uploads/' + ${imageList[0]}} : @{/images/default.png}"
+               onerror="this.src='/images/cat-3.png';"
+               th:alt="${item.product.productName}">
+        </div>
+
+        <div th:if="${!item.product.active}" class="offline-badge">
+          <i class="fas fa-eye-slash me-1"></i> Currently Offline
+        </div>
+
+        <h6 class="fw-bold text-dark mb-1 text-truncate" th:text="${item.product.productName}">Product Name</h6>
+        <div class="price-text mb-3">₹<span th:text="${item.product.price}">0.00</span></div>
+
+        <div class="d-flex align-items-center justify-content-center mb-3">
+          <span class="small text-muted me-2">Qty:</span>
+          <input type="number" min="1" value="1" class="form-control form-control-sm qty-box" readonly>
+        </div>
+
+        <form th:action="@{/cart/add}" method="post">
+          <input type="hidden" name="pid" th:value="${item.product.id}">
+          <input type="hidden" name="p_qty" value="1">
+          <button type="submit" class="btn btn-add-to-cart rounded-pill"
+                  th:disabled="${!item.product.active or item.product.stock == 0}">
+            <i class="fas fa-cart-plus me-2"></i>
+            <span th:text="${!item.product.active ? 'Unavailable' : 'Add to Cart'}">Add to Cart</span>
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="wishlist-summary d-flex flex-column flex-md-row align-items-center justify-content-between" th:if="${not #lists.isEmpty(wishlistItems)}">
+    <div class="mb-3 mb-md-0">
+      <span class="text-muted fs-5">Wishlist Value: </span>
+      <span class="fw-bold fs-4 text-success ms-2">₹<span th:text="${#numbers.formatDecimal(totalValue, 1, 2)}">0.00</span></span>
+    </div>
+
+    <div class="d-flex gap-3">
+      <a th:href="@{/client/shop}" class="btn btn-outline-secondary rounded-pill px-4">
+        Continue Shopping
+      </a>
+      <a href="javascript:void(0)"
+         class="btn btn-outline-danger rounded-pill px-4 delete-all-btn">
+        Delete All
+      </a>
+    </div>
+  </div>
+</div>
+
+<div th:replace="~{fragments/footer :: footer}"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script th:inline="javascript">
+  /*<![CDATA[*/
+  // --- Delete Single Item Confirmation ---
+  document.querySelectorAll('.delete-confirm-btn').forEach(button => {
+      button.addEventListener('click', function(e) {
+          e.preventDefault();
+          const itemId = this.getAttribute('data-id');
+          const productName = this.getAttribute('data-name');
+
+          Swal.fire({
+              title: 'Remove from Wishlist?',
+              html: `Are you sure you want to remove <br><b>${productName}</b>?`,
+              icon: 'warning',
+              showCancelButton: true,
+              confirmButtonColor: '#e74c3c',
+              cancelButtonColor: '#bdc3c7',
+              confirmButtonText: 'Yes, remove it!',
+              cancelButtonText: 'Cancel',
+              reverseButtons: true
+          }).then((result) => {
+              if (result.isConfirmed) {
+                  // Just show a loading state, the header will show the success message after reload
+                  Swal.fire({
+                      title: 'Removing...',
+                      allowOutsideClick: false,
+                      didOpen: () => { Swal.showLoading(); }
+                  });
+                  window.location.href = `/client/wishlist/delete?id=${itemId}`;
+              }
+          });
+      });
+  });
+
+  // --- Delete All Confirmation ---
+  const deleteAllBtn = document.querySelector('.delete-all-btn');
+  if(deleteAllBtn) {
+      deleteAllBtn.addEventListener('click', function() {
+          Swal.fire({
+              title: 'Clear Wishlist?',
+              text: "Are you sure you want to remove ALL items?",
+              icon: 'error',
+              showCancelButton: true,
+              confirmButtonColor: '#e74c3c',
+              confirmButtonText: 'Yes, clear all!'
+          }).then((result) => {
+              if (result.isConfirmed) {
+                  window.location.href = /*[[@{/client/wishlist/delete_all}]]*/ '';
+              }
+          });
+      });
+  }
+  /*]]>*/
+</script>
+</body>
+</html>

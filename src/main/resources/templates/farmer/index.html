@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="${title}">KrushiVikash Farmer Dashboard</title>
+
+    <meta th:if="${_csrf != null}" name="_csrf" th:content="${_csrf.token}"/>
+    <meta th:if="${_csrf != null}" name="_csrf_header" th:content="${_csrf.headerName}"/>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root { --sidebar-bg: #1a233a; --accent: #4e73df; }
+        body { background-color: #f4f7f6; font-family: 'Segoe UI', sans-serif; }
+
+        /* Layout Structure */
+        .sidebar { min-width: 260px; background: var(--sidebar-bg); min-height: 100vh; color: #fff; position: fixed; z-index: 1000; }
+        .main-container { margin-left: 260px; width: calc(100% - 260px); min-height: 100vh; }
+        .main-content { padding: 30px; }
+        header { position: sticky; top: 0; z-index: 999; border-bottom: 1px solid #e3e6f0; background: white; }
+
+        /* Navigation Links */
+        .nav-link { color: #d1d3e2; padding: 15px 25px; cursor: pointer; display: block; text-decoration: none; transition: 0.3s; }
+        .nav-link:hover { background: #26314d; color: #fff; }
+        .nav-link.active { background: var(--accent); color: white; }
+
+        /* Profile & Status UI */
+        .user-img { width: 80px; height: 80px; border-radius: 50%; border: 3px solid var(--accent); object-fit: cover; }
+        .status-text { font-size: 0.85rem; font-weight: 700; letter-spacing: 0.5px; }
+
+        /* Notification Dropdown Custom Styles */
+        .notification-dropdown { width: 350px; border: none; border-radius: 12px; overflow: hidden; }
+        .notification-wrapper { max-height: 400px; overflow-y: auto; }
+        .msg-item { transition: 0.2s; border-bottom: 1px solid #f1f1f1; }
+        .msg-item:hover { background-color: #f8f9fa; }
+
+        /* Highlight Unread Messages */
+        .unread-msg { background-color: #f0f7ff; border-left: 4px solid var(--accent); }
+
+        /* Flash Alert Styles */
+        .custom-alert { border-radius: 10px; border: none; display: flex; align-items: center; padding: 15px 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: opacity 0.5s; }
+
+        /* Animations */
+        .animated { animation-duration: 0.8s; animation-fill-mode: both; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+        .fadeIn { animation-name: fadeIn; }
+
+        #dynamic-area { min-height: 400px; }
+
+  .sidebar {
+    height: 100vh;      /* Fixed to window height */
+    position: fixed;    /* Stays put while page content scrolls */
+    top: 0;
+    left: 0;
+    width: 250px;       /* Adjust based on your current width */
+    overflow-y: auto;   /* Enables internal scrolling */
+    display: flex;
+    flex-direction: column;
+    z-index: 1000;
+}
+
+.sidebar::-webkit-scrollbar {
+    width: 5px;
+}
+.sidebar::-webkit-scrollbar-thumb {
+    background: #27ae60;
+    border-radius: 10px;
+}
+    </style>
+</head>
+<body>
+
+<div class="d-flex">
+    <nav class="sidebar shadow">
+        <div class="p-4 text-center border-bottom border-secondary">
+            <img th:src="${farmer != null && farmer.image != null && !#strings.isEmpty(farmer.image)} ? '/uploads/' + ${farmer.image} : @{/images/pic-1.png}"
+                 class="user-img mb-2 shadow-sm"
+                 alt="Farmer Profile"
+                 onerror="this.src='/images/pic-1.png';">
+
+            <p class="mb-0 fw-bold" th:text="${farmer?.name ?: 'Farmer'}">User Name</p>
+
+            <div class="mt-1">
+                <small th:if="${verification == null}" class="status-text text-secondary">
+                    <i class="fas fa-circle me-1"></i> NEW ACCOUNT
+                </small>
+                <small th:if="${verification?.status == 'PENDING'}" class="status-text text-warning">
+                    <i class="fas fa-clock me-1"></i> PENDING
+                </small>
+                <small th:if="${verification?.status == 'APPROVED' || verification?.status == 'VERIFIED'}" class="status-text text-success">
+                    <i class="fas fa-check-circle me-1"></i> ACTIVE
+                </small>
+                <small th:if="${verification?.status == 'REJECTED'}" class="status-text text-danger">
+                    <i class="fas fa-times-circle me-1"></i> REJECTED
+                </small>
+            </div>
+        </div>
+
+        <ul class="nav flex-column mt-3">
+            <li class="nav-item">
+                <a class="nav-link active" th:href="@{/farmer/index}"><i class="fas fa-home me-2"></i> Dashboard</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" onclick="loadContent('/farmer/profile-fragment', this)" style="cursor: pointer;"><i class="fas fa-user me-2"></i> My Profile</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" onclick="loadContent('/farmer/verify-fragment', this)" style="cursor: pointer;">
+                    <i class="fas fa-shield-alt me-2"></i> Land Verification
+                    <span th:if="${verification != null && verification.status == 'PENDING'}" class="badge bg-warning text-dark float-end" style="font-size: 0.6rem;">PENDING</span>
+                    <span th:if="${verification != null && (verification.status == 'VERIFIED' || verification.status == 'APPROVED')}" class="badge bg-success float-end" style="font-size: 0.6rem;">VERIFIED</span>
+                    <span th:if="${verification != null && verification.status == 'REJECTED'}" class="badge bg-danger float-end" style="font-size: 0.6rem;">REJECTED</span>
+                </a>
+            </li>
+
+            <div th:if="${verification?.status == 'APPROVED' || verification?.status == 'VERIFIED'}">
+                <div class="px-4 mt-4 mb-2 small text-uppercase text-secondary fw-bold" style="font-size: 0.7rem; letter-spacing: 1px;">Product Management</div>
+
+                <li class="nav-item" th:each="cat : ${categories}">
+                    <a class="nav-link" th:onclick="|loadContent('/farmer/products/category/${cat.id}', this)|" style="cursor: pointer;">
+                        <i class="fas fa-seedling me-2 text-success"></i>
+                        <span th:text="${cat.name}">Category</span>
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    <a id="nav-view-orders" class="nav-link" onclick="handleOrderView('/farmer/view-orders-fragment', this)" style="cursor: pointer;">
+                        <i class="fas fa-shopping-cart me-2"></i> View Orders
+                        <span id="order-badge" th:if="${pendingOrders > 0}" class="badge rounded-pill bg-danger ms-2">
+            [[${pendingOrders}]]
+        </span>
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    <a class="nav-link" onclick="loadContent('/farmer/total-sell', this)" style="cursor: pointer;">
+                        <i class="fas fa-chart-line me-2"></i> Total Sell
+                    </a>
+                </li>
+            </div>
+
+            <li class="nav-item mt-4">
+                <form th:action="@{/logout}" method="post">
+                    <button class="nav-link bg-transparent border-0 w-100 text-start text-danger" type="submit">
+                        <i class="fas fa-sign-out-alt me-2"></i> Logout
+                    </button>
+                </form>
+            </li>
+        </ul>
+    </nav>
+
+    <div class="main-container">
+        <header class="p-3 shadow-sm d-flex justify-content-between align-items-center">
+            <h4 class="m-0 fw-bold text-dark">KrushiVikash Farmer Panel</h4>
+
+            <div class="d-flex align-items-center">
+                <div class="dropdown me-3">
+                    <a class="text-muted position-relative" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" onclick="markAsRead()">
+                        <i class="fas fa-bell fa-lg"></i>
+                        <span th:if="${unreadCount != null && unreadCount > 0}" id="notif-badge"
+                              class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+                              style="font-size: 0.65rem;" th:text="${unreadCount}">0</span>
+                    </a>
+
+                    <div class="dropdown-menu dropdown-menu-end shadow-lg notification-dropdown p-0 mt-3">
+                        <div class="p-3 border-bottom bg-light d-flex justify-content-between align-items-center">
+                            <h6 class="m-0 fw-bold">Message History</h6>
+                            <span class="badge bg-primary rounded-pill" th:text="${messages?.size() ?: 0} + ' Inbox'"></span>
+                        </div>
+                        <div class="notification-wrapper">
+                            <div th:each="msg : ${messages}" class="msg-item p-3" th:classappend="${!msg.read} ? 'unread-msg' : ''">
+                                <div class="d-flex align-items-start">
+                                    <div class="me-3 mt-1">
+                                        <i class="fas fa-user-shield text-primary"></i>
+                                    </div>
+                                    <div class="w-100">
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <strong class="small">Admin Support</strong>
+                                            <small class="text-muted" th:text="${#temporals.format(msg.createdAt, 'dd MMM, hh:mm a')}"></small>
+                                        </div>
+                                        <p class="small text-dark mb-2" th:text="${msg.content}"></p>
+                                        <button class="btn btn-sm btn-outline-primary py-0 px-2 fw-bold"
+                                                style="font-size: 0.7rem;"
+                                                th:onclick="|openReplyModal(${msg.id})|">
+                                            <i class="fas fa-reply me-1"></i> REPLY
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div th:if="${messages == null || messages.isEmpty()}" class="p-5 text-center">
+                                <i class="fas fa-envelope-open text-muted fa-2x mb-2"></i>
+                                <p class="small text-muted m-0">No messages from admin.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <span class="badge bg-primary rounded-pill px-3 py-2">Active Session</span>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div id="message-container">
+                <div th:if="${errorMsg}" class="custom-alert alert-danger shadow-sm fadeIn">
+                    <i class="fas fa-exclamation-triangle me-3 fa-lg"></i>
+                    <span th:text="${errorMsg}" class="fw-bold"></span>
+                </div>
+                <div th:if="${successMsg}" class="custom-alert alert-success shadow-sm fadeIn">
+                    <i class="fas fa-check-circle me-3 fa-lg"></i>
+                    <span th:text="${successMsg}" class="fw-bold"></span>
+                </div>
+            </div>
+
+            <div id="dynamic-area">
+                <div th:if="${verification?.status == 'REJECTED'}" class="card p-5 text-center shadow-sm border-0 animated fadeIn">
+                    <div class="card-body">
+                        <i class="fas fa-times-circle fa-4x text-danger mb-4"></i>
+                        <h2 class="fw-bold text-danger">Verification Rejected</h2>
+                        <p class="lead text-muted">Your land documents were not approved. Please check the <strong>Bell Icon</strong> in the header to read the admin's feedback.</p>
+                        <hr class="my-4">
+                        <button onclick="loadContent('/farmer/verify-fragment', this)" class="btn btn-danger btn-lg px-5 shadow-sm">
+                            <i class="fas fa-edit me-2"></i> Fix & Re-submit
+                        </button>
+                    </div>
+                </div>
+
+                <div th:if="${verification?.status == 'PENDING'}" class="card p-5 text-center shadow-sm border-0 animated fadeIn">
+                    <div class="card-body">
+                        <i class="fas fa-hourglass-half fa-4x text-warning mb-4"></i>
+                        <h2 class="fw-bold">Review in Progress</h2>
+                        <p class="lead text-muted">We have received your documents. Our team is currently verifying your details.</p>
+                        <p class="small text-muted">Submitted on: <span th:text="${#temporals.format(verification.submissionDate, 'dd MMMM yyyy')}"></span></p>
+                    </div>
+                </div>
+
+                <div th:if="${verification?.status == 'APPROVED' || verification?.status == 'VERIFIED'}" class="card p-5 text-center shadow-sm border-0 animated fadeIn">
+                    <div class="card-body">
+                        <i class="fas fa-check-circle fa-4x text-success mb-4"></i>
+                        <h2 class="fw-bold text-success">Account Fully Verified!</h2>
+                        <p class="lead text-muted">Congratulations <span th:text="${farmer?.name}"></span>! Your farm is now active in our system.</p>
+                        <hr class="my-4">
+                        <button onclick="loadContent('/farmer/add-product-fragment', this)" class="btn btn-success btn-lg px-5 shadow-sm">
+                            <i class="fas fa-plus me-2"></i> Start Selling Products
+                        </button>
+                    </div>
+                </div>
+
+                <div th:if="${verification == null}" class="card p-5 text-center shadow-sm border-0 animated fadeIn">
+                    <div class="card-body">
+                        <i class="fas fa-seedling fa-4x text-success mb-4"></i>
+                        <h2 class="fw-bold">Welcome to KrushiVikash, <span th:text="${farmer?.name}">Farmer</span>!</h2>
+                        <p class="lead text-muted">To start selling your crops, you first need to verify your land ownership records.</p>
+                        <hr class="my-4">
+                        <button onclick="loadContent('/farmer/verify-fragment', this)" class="btn btn-success btn-lg px-5 shadow-sm fw-bold">
+                            Verify My Farm Now
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<div class="modal fade" id="replyModal" tabindex="-1" aria-labelledby="replyModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title fw-bold" id="replyModalLabel"><i class="fas fa-reply me-2"></i> Send Reply to Admin</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="replyForm">
+                    <input type="hidden" id="parentMsgId">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Your Response</label>
+                        <textarea id="replyContent" class="form-control" rows="5" placeholder="Type your message here..." required></textarea>
+                    </div>
+                    <div class="text-end">
+                        <button type="button" class="btn btn-light border me-2" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary px-4 fw-bold shadow-sm">Send Message</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script th:inline="javascript">
+
+    // Add this inside your <script th:inline="javascript"> block
+document.getElementById('replyForm').addEventListener('submit', function(e) {
+    e.preventDefault(); // Stop page from reloading
+
+    const message = document.getElementById('replyContent').value;
+    const parentId = document.getElementById('parentMsgId').value;
+
+    // Get CSRF tokens for Security
+    const token = document.querySelector('meta[name="_csrf"]')?.content;
+    const header = document.querySelector('meta[name="_csrf_header"]')?.content;
+
+    const payload = {
+        message: message,
+        parentId: parentId // Optional: helps link which message they are replying to
+    };
+
+    fetch('/farmer/send-reply', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            [header]: token // Required for Spring Security @PostMapping
+        },
+        body: JSON.stringify(payload)
+    })
+    .then(response => {
+        if (response.ok) {
+            // Close the modal
+            const modalEl = document.getElementById('replyModal');
+            const modalInstance = bootstrap.Modal.getInstance(modalEl);
+            modalInstance.hide();
+
+            // Clear the textarea
+            document.getElementById('replyContent').value = '';
+
+            // Show success alert
+            Swal.fire({
+                icon: 'success',
+                title: 'Sent!',
+                text: 'Your reply has been sent to admin.',
+                timer: 2000,
+                showConfirmButton: false
+            });
+        } else {
+            throw new Error('Failed to send');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        Swal.fire('Error', 'Could not send message. Try again.', 'error');
+    });
+});
+
+    // 1. GLOBAL UI & NOTIFICATION HANDLERS
+    function markAsRead() {
+        const badge = document.getElementById('notif-badge');
+        if (!badge) return;
+        const token = document.querySelector('meta[name="_csrf"]')?.content;
+        const header = document.querySelector('meta[name="_csrf_header"]')?.content;
+
+        fetch('/farmer/messages/mark-as-read', {
+            method: 'POST',
+            headers: { [header]: token }
+        }).then(res => {
+            if(res.ok) badge.style.display = 'none';
+        });
+    }
+
+    window.onload = function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('loginSuccess')) {
+            Swal.fire({ icon: 'success', title: 'Welcome Back!', text: 'Your dashboard is ready.', toast: true, position: 'top-end', showConfirmButton: false, timer: 3000 });
+        }
+        if (urlParams.has('updateSuccess')) {
+            Swal.fire({ title: 'Success!', text: 'Information updated successfully.', icon: 'success' });
+        }
+        setTimeout(() => {
+            const msgBox = document.getElementById('message-container');
+            if (msgBox && msgBox.innerHTML.trim() !== "") {
+                msgBox.style.opacity = '0';
+                setTimeout(() => msgBox.style.display = 'none', 500);
+            }
+        }, 5000);
+        if (window.history.replaceState) {
+            window.history.replaceState({}, document.title, window.location.origin + window.location.pathname);
+        }
+    };
+
+    // 2. MESSAGE & REPLY HANDLERS
+    function openReplyModal(id) {
+        document.getElementById('parentMsgId').value = id;
+        const replyModal = new bootstrap.Modal(document.getElementById('replyModal'));
+        replyModal.show();
+    }
+
+    // 3. CONTENT LOADING ENGINE
+    function loadContent(input, element = null) {
+        if (element) {
+            document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
+            element.classList.add('active');
+        }
+        const dynamicArea = document.getElementById('dynamic-area');
+        dynamicArea.innerHTML = `
+            <div class="text-center p-5">
+                <div class="spinner-border text-success" role="status"></div>
+                <p class="mt-3 text-muted">Loading your products...</p>
+            </div>`;
+
+        let finalUrl = isNaN(input) ? input : '/farmer/products/category/' + input;
+
+        fetch(finalUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(res => {
+            if (!res.ok) throw new Error("Network response was not ok");
+            return res.text();
+        })
+        .then(html => {
+            dynamicArea.innerHTML = html;
+            const scripts = dynamicArea.querySelectorAll("script");
+            scripts.forEach(oldScript => {
+                const newScript = document.createElement("script");
+                if (oldScript.src) newScript.src = oldScript.src;
+                else newScript.text = oldScript.text;
+                document.body.appendChild(newScript).parentNode.removeChild(newScript);
+            });
+        })
+        .catch(err => {
+            console.error("Fetch error:", err);
+            dynamicArea.innerHTML = `<div class="alert alert-danger m-4">Failed to load content. Please refresh.</div>`;
+        });
+    }
+
+    // 4. PRODUCT FORM SUBMISSION (Save & Update)
+    async function handleProductSubmit() {
+        const fileInput = document.getElementById('productImagesInput');
+        const files = fileInput ? fileInput.files : [];
+        const productId = document.getElementById('productId')?.value;
+        const isUpdate = productId && productId !== "";
+
+        if (!isUpdate && files.length < 3) {
+            Swal.fire({ icon: 'warning', title: 'Action Required', text: 'Select at least 3 images.' });
+            return;
+        }
+
+        const productData = {
+            id: productId || null,
+            productName: document.getElementById('pName').value,
+            description: document.getElementById('pDesc').value,
+            price: document.getElementById('pPrice').value,
+            stock: document.getElementById('pStock').value,
+            units: document.getElementById('pUnits').value,
+            active: document.getElementById('pActive').checked,
+            categoryId: document.querySelector('input[name="categoryId"]')?.value
+        };
+
+        const formData = new FormData();
+        formData.append('productJson', JSON.stringify(productData));
+        if (files.length > 0) {
+            for (let i = 0; i < files.length; i++) {
+                formData.append("productImages", files[i]);
+            }
+        }
+
+        const token = document.querySelector('meta[name="_csrf"]')?.content;
+        const header = document.querySelector('meta[name="_csrf_header"]')?.content;
+
+        try {
+            const response = await fetch('/farmer/products/save', {
+                method: 'POST',
+                headers: { [header]: token },
+                body: formData
+            });
+
+            const status = response.headers.get('X-Status');
+            const html = await response.text();
+
+           if (status === 'validation-error') {
+            // 1. Clean up any existing backdrops and modal leftovers first
+            document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+            document.body.classList.remove('modal-open');
+            document.body.style.overflow = '';
+            document.body.style.paddingRight = '';
+
+            // 2. Update the HTML fragment so the error messages show up
+            document.getElementById('dynamic-area').innerHTML = html;
+
+            // 3. Re-trigger the modal
+            const modalEl = document.getElementById('addProductModal');
+            if (modalEl) {
+                const newModal = new bootstrap.Modal(modalEl);
+                newModal.show();
+            }
+
+            // 4. Alert the user
+            Swal.fire({
+                icon: 'error',
+                title: 'Validation Error',
+                text: 'Please check your inputs (Description may be too short).'
+            });
+            return;
+        }
+
+            if (status === 'success') {
+                document.getElementById('dynamic-area').innerHTML = html;
+                const modalEl = document.getElementById('addProductModal');
+                const modalInstance = bootstrap.Modal.getInstance(modalEl);
+                if (modalInstance) modalInstance.hide();
+                document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+                Swal.fire({ icon: 'success', title: isUpdate ? 'Updated!' : 'Added!', toast: true, position: 'top-end', showConfirmButton: false, timer: 2500 });
+            }
+        } catch (err) {
+            console.error(err);
+            Swal.fire('Error', 'Submission failed. Check connection.', 'error');
+        }
+    }
+
+    // 5. PRODUCT UTILITIES (Delete, Edit, Status)
+    function handleProductDelete(id) {
+        Swal.fire({
+            title: 'Delete this item?',
+            text: "This action cannot be undone.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            confirmButtonText: 'Yes, delete it!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const token = document.querySelector('meta[name="_csrf"]')?.content;
+                const header = document.querySelector('meta[name="_csrf_header"]')?.content;
+                fetch(`/farmer/products/delete/${id}`, {
+                    method: 'DELETE',
+                    headers: { [header]: token }
+                })
+                .then(res => res.text())
+                .then(html => {
+                    document.getElementById('dynamic-area').innerHTML = html;
+                    Swal.fire({ icon: 'success', title: 'Removed', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
+                });
+            }
+        });
+    }
+
+    function updateStatusLabel(isChecked) {
+        const statusText = document.getElementById('statusText');
+        if (statusText) {
+            statusText.innerText = isChecked ? "Active" : "Hidden";
+            statusText.className = isChecked ? 'text-success' : 'text-danger';
+        }
+    }
+
+    function openEditModal(id, name, price, stock, units, desc, active, imageNames) {
+        document.getElementById('productId').value = id;
+        document.getElementById('pName').value = name;
+        document.getElementById('pPrice').value = price;
+        document.getElementById('pStock').value = stock;
+        document.getElementById('pUnits').value = units;
+        document.getElementById('pDesc').value = desc;
+
+        const activeField = document.getElementById('pActive');
+        if (activeField) {
+            activeField.checked = (active === true || active === "true");
+            updateStatusLabel(activeField.checked);
+        }
+
+        const previewContainer = document.getElementById('currentImagePreview');
+        const previewSection = document.getElementById('imagePreviewSection');
+        if (previewContainer) {
+            previewContainer.innerHTML = '';
+            if (imageNames && imageNames.trim() !== "") {
+                imageNames.split(',').forEach(img => {
+                    previewContainer.insertAdjacentHTML('beforeend', `<img src="/uploads/${img.trim()}" class="rounded border m-1" style="width: 70px; height: 70px; object-fit: cover;">`);
+                });
+                previewSection?.classList.remove('d-none');
+                document.getElementById('editPhotoNotice')?.classList.remove('d-none');
+            }
+        }
+
+        document.getElementById('modalTitle').innerHTML = `<i class="fas fa-edit me-2 text-warning"></i>Edit ${name}`;
+        const submitBtn = document.getElementById('submitBtn');
+        if (submitBtn) {
+            submitBtn.innerHTML = '<i class="fas fa-sync me-1"></i> Update Product';
+            submitBtn.className = 'btn btn-warning px-5 fw-bold shadow-sm text-white';
+        }
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('addProductModal')).show();
+    }
+
+    function resetProductForm() {
+        const form = document.getElementById('productForm');
+        if (form) form.reset();
+        document.getElementById('productId').value = '';
+        document.getElementById('imagePreviewSection')?.classList.add('d-none');
+        document.getElementById('editPhotoNotice')?.classList.add('d-none');
+        document.getElementById('modalTitle').innerHTML = '<i class="fas fa-plus-circle me-2 text-success"></i>New Item';
+        const submitBtn = document.getElementById('submitBtn');
+        if (submitBtn) {
+            submitBtn.innerHTML = 'Save Product';
+            submitBtn.className = 'btn btn-success px-5 fw-bold shadow-sm';
+        }
+        updateStatusLabel(true);
+    }
+
+    function toggleVisibility(productId) {
+        fetch(`/farmer/products/toggle-status/${productId}`, { method: 'PATCH' })
+        .then(res => res.json())
+        .then(data => {
+            const label = document.getElementById(`status-label-${productId}`);
+            const icon = document.getElementById(`eye-icon-${productId}`);
+            if (data.active) {
+                label.className = 'text-success me-2';
+                label.innerHTML = '<i class="fas fa-circle"></i> <small class="fw-bold">Live</small>';
+                icon.className = 'fas fa-eye';
+            } else {
+                label.className = 'text-danger me-2';
+                label.innerHTML = '<i class="fas fa-circle-notch"></i> <small class="fw-bold">Hidden</small>';
+                icon.className = 'fas fa-eye-slash';
+            }
+        });
+    }
+
+    function handleOrderView(url, element) {
+        loadContent(url, element);
+        const badge = document.getElementById('order-badge');
+        if (badge) badge.style.display = 'none';
+    }
+
+</script>
+</body>
+</html>

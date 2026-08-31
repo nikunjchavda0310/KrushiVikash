@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<div th:fragment="landRecordPanel" id="reviewPanel" class="card shadow-sm border-0 mb-4 fadeIn animated">
+  <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center py-3">
+    <h6 class="mb-0 fw-bold"><i class="fas fa-search-location me-2"></i> Farmer Land Records & Inspection</h6>
+    <a th:href="@{/admin/index}" class="btn-close btn-close-white"></a>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-bordered align-middle mb-0" style="min-width: 1400px;">
+        <thead class="table-light small text-center text-uppercase">
+        <tr>
+          <th>Farmer Name</th><th>State</th><th>District</th><th>Taluka</th>
+          <th>Village</th><th>Pincode</th><th>Survey No</th><th>Area</th>
+          <th>Documents</th><th>Current Status</th><th>Status Actions</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="v : ${verificationList}" class="text-center">
+          <td class="fw-bold" th:text="${v.farmer?.name}"></td>
+          <td th:text="${v.state?.name ?: 'N/A'}"></td>
+          <td th:text="${v.district?.name ?: 'N/A'}"></td>
+          <td th:text="${v.taluka?.name ?: 'N/A'}"></td>
+          <td th:text="${v.village}"></td>
+          <td th:text="${v.pincode}"></td>
+          <td class="text-success fw-bold" th:text="${v.regNumber}"></td>
+          <td><span th:text="${v.farmArea}"></span> Vigha</td>
+          <td>
+            <div class="d-flex flex-column gap-1">
+              <a th:if="${v.satBaraFile}" th:href="@{'/uploads/documents/' + ${v.satBaraFile}}" target="_blank" class="btn btn-xs btn-outline-dark">7/12</a>
+              <a th:if="${v.aadhaarFile}" th:href="@{'/uploads/documents/' + ${v.aadhaarFile}}" target="_blank" class="btn btn-xs btn-outline-dark">Aadhaar</a>
+            </div>
+          </td>
+          <td>
+            <span th:if="${v.status == 'APPROVED'}" class="badge bg-success">APPROVED</span>
+            <span th:if="${v.status == 'REJECTED'}" class="badge bg-danger">REJECTED</span>
+            <span th:if="${v.status == 'PENDING'}" class="badge bg-warning text-dark">PENDING</span>
+          </td>
+          <td>
+            <div class="d-flex gap-1 justify-content-center">
+              <form th:action="@{'/admin/update-status-accept/' + ${v.id}}" method="post">
+                <button type="submit" class="btn btn-sm btn-success" title="Approve Account"><i class="fas fa-check"></i></button>
+              </form>
+              <form th:action="@{'/admin/update-status-reject/' + ${v.id}}" method="post">
+                <button type="submit" class="btn btn-sm btn-danger" title="Reject Account"><i class="fas fa-times"></i></button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div th:each="v : ${verificationList}" class="p-4 bg-light border-top">
+
+      <h6 class="fw-bold text-primary mb-3 small text-uppercase">
+        <i class="fas fa-comments me-2"></i> Conversation History
+      </h6>
+
+      <div class="conversation-box mb-4 p-3 bg-white rounded border shadow-sm" style="max-height: 400px; overflow-y: auto;">
+
+        <div th:each="msg : ${conversation}" class="mb-3 d-flex flex-column"
+             th:classappend="${msg.senderType == 'ADMIN'} ? 'align-items-end' : 'align-items-start'">
+
+          <div th:style="${msg.senderType == 'ADMIN'} ?
+                 'max-width: 80%; background: #e3f2fd; border-radius: 15px 15px 0 15px; padding: 10px 15px; border: 1px solid #bbdefb;' :
+                 'max-width: 80%; background: #f5f5f5; border-radius: 15px 15px 15px 0; padding: 10px 15px; border: 1px solid #e0e0e0;'">
+
+            <div class="d-flex justify-content-between align-items-center mb-1 gap-3">
+              <strong class="small" th:text="${msg.senderType == 'ADMIN' ? 'You (Admin)' : v.farmer.name}">Sender</strong>
+              <small class="text-muted" style="font-size: 0.65rem;"
+                     th:text="${#temporals.format(msg.createdAt, 'dd MMM, hh:mm a')}"></small>
+            </div>
+
+            <p class="mb-0 small text-dark" th:text="${msg.content}"></p>
+          </div>
+        </div>
+
+        <div th:if="${#lists.isEmpty(conversation)}" class="text-center py-3 text-muted">
+          <small><i class="fas fa-info-circle me-1"></i> No previous conversation found.</small>
+        </div>
+      </div>
+
+      <h6 class="fw-bold text-secondary mb-3 small text-uppercase"><i class="fas fa-reply me-2"></i> Send New Message</h6>
+      <form th:action="@{'/admin/send-message/' + ${v.id}}" method="post">
+        <div class="row align-items-end">
+          <div class="col-md-9">
+                <textarea name="adminMessage" class="form-control border-primary" rows="2" required
+                          placeholder="Type your instruction or reply here..."></textarea>
+          </div>
+          <div class="col-md-3">
+            <button type="submit" class="btn btn-primary w-100 shadow-sm py-2">
+              <i class="fas fa-paper-plane me-2"></i> Send
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+</body>
+</html>

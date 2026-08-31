@@ -1,0 +1,64 @@
+<div class="card shadow-sm border-0" xmlns:th="http://www.thymeleaf.org">
+  <div class="card-header bg-white py-3">
+    <h5 class="mb-0 text-primary fw-bold">Update Customer: [[${client.name}]]</h5>
+  </div>
+  <div class="card-body">
+    <form th:action="@{/admin/update/client/{id}(id=${client.id})}"
+          method="post"
+          enctype="multipart/form-data"
+          id="clientUpdateForm"
+          onsubmit="handleProfileUpdate(event, 'clientUpdateForm')">
+
+      <input type="hidden" name="email" th:value="${client.email}">
+
+      <div class="row">
+        <div class="col-md-4 mb-3">
+          <label class="form-label fw-bold">Full Name</label>
+          <input type="text" class="form-control" name="name" th:value="${client.name}" required>
+        </div>
+
+        <div class="col-md-4 mb-3">
+          <label class="form-label fw-bold">Gender</label>
+          <select class="form-select" name="gender" required>
+            <option value="" disabled>Select Gender</option>
+            <option value="male" th:selected="${client.gender == 'male'}">Male</option>
+            <option value="female" th:selected="${client.gender == 'female'}">Female</option>
+            <option value="other" th:selected="${client.gender == 'other'}">Other</option>
+          </select>
+        </div>
+
+        <div class="col-md-4 mb-3">
+          <label class="form-label fw-bold">Contact Number</label>
+          <input type="text" class="form-control" name="contact" th:value="${client.contact}" required>
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label fw-bold text-muted">Email Address (Read-Only)</label>
+        <input type="text" class="form-control bg-light" th:value="${client.email}" readonly>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label fw-bold">Address</label>
+        <textarea class="form-control" name="address" rows="2" th:text="${client.address}"></textarea>
+      </div>
+
+      <div class="mb-4">
+        <label class="form-label fw-bold">Profile Picture</label>
+        <input type="file" class="form-control" name="imageFile">
+        <small class="text-muted" th:if="${client.image != null}">Current file: [[${client.image}]]</small>
+      </div>
+
+      <div class="form-check form-switch mb-4">
+        <input class="form-check-input" type="checkbox" name="verified" id="clientVerify" th:checked="${client.verified}">
+        <label class="form-check-label" for="clientVerify">Mark as Verified Customer</label>
+      </div>
+
+      <div class="d-flex justify-content-end border-top pt-3">
+        <button type="button"
+                onclick="loadContent('/admin/profile-fragment')"
+                class="btn btn-secondary me-2">Cancel</button><button type="submit" class="btn btn-primary px-5">Update Profile</button>
+      </div>
+    </form>
+  </div>
+</div>

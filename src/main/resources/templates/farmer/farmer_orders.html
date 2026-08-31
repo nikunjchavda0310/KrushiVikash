@@ -1,0 +1,99 @@
+<html xmlns:th="http://www.w3.org/1999/xhtml">
+ <head>
+   <style>
+     /* Custom Status Badges */
+.status-badge {
+    padding: 6px 12px;
+    border-radius: 50px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    display: inline-block;
+}
+
+.status-pending {
+    background-color: #fff4e5;
+    color: #b7791f;
+    border: 1px solid #fbd38d;
+} /* For UPI Waiting */
+
+.status-paid {
+    background-color: #def7ec;
+    color: #03543f;
+    border: 1px solid #84e1bc;
+} /* For Verified */
+
+.status-cod {
+    background-color: #e1effe;
+    color: #1e429f;
+    border: 1px solid #a4cafe;
+} /* For Cash on Delivery */
+
+/* Interactive Verify Button */
+.btn-verify {
+    background: #27ae60;
+    color: white;
+    border: none;
+    transition: 0.3s;
+    font-weight: 600;
+}
+.btn-verify:hover {
+    background: #219150;
+    transform: scale(1.05);
+    color: white;
+}
+   </style>
+ </head>
+<body>
+
+<table class="table align-middle">
+  <thead>
+  <tr>
+    <th>Order ID</th>
+    <th>Customer</th>
+    <th>Total Amount</th>
+    <th>Payment Method</th>
+    <th>UTR (Transaction ID)</th>
+    <th>Status</th>
+    <th>Actions</th>
+  </tr>
+  </thead>
+  <tbody>
+  <tr th:each="order : ${farmerOrders}">
+    <td th:text="'#' + ${order.id}"></td>
+    <td th:text="${order.name}"></td>
+    <td class="fw-bold" th:text="'₹' + ${order.totalAmount}"></td>
+    <td>
+                <span class="badge rounded-pill bg-light text-dark border">
+                    <i class="fas fa-wallet me-1 text-primary"></i>
+                    <span th:text="${order.method}"></span>
+                </span>
+    </td>
+    <td>
+                <span class="font-monospace text-primary fw-bold"
+                      th:text="${order.transactionId ?: '---'}"></span>
+    </td>
+    <td>
+      <div class="status-badge"
+           th:classappend="${order.status == 'Paid & Confirmed' ? 'status-paid' :
+                                     (order.method == 'upi' ? 'status-pending' : 'status-cod')}"
+           th:text="${order.status}">
+      </div>
+    </td>
+    <td>
+      <a th:if="${order.method == 'upi' && order.status != 'Paid & Confirmed'}"
+         th:href="@{'/farmer/verify-payment/' + ${order.id}}"
+         class="btn btn-sm btn-verify shadow-sm">
+        <i class="fas fa-check-double me-1"></i> Verify Payment
+      </a>
+
+      <span th:if="${order.status == 'Paid & Confirmed'}" class="text-success fw-bold">
+                    <i class="fas fa-shield-check"></i> Confirmed
+                </span>
+    </td>
+  </tr>
+  </tbody>
+</table>
+
+</body>
+</html>
